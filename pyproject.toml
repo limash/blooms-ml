@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "blooms-ml"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+    "pandas",
+    "xarray[complete]",
+    "matplotlib",
+    "ipykernel",
+]
+
+[tool.setuptools.packages.find]
+include = ["blooms_ml"]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+extend-select = [
+  "UP",  # pyupgrade
+]
