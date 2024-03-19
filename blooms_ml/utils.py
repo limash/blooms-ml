@@ -10,11 +10,13 @@ def extract_stations_rho(ds: xr.Dataset, xis: list, etas: list):
         datasets.append(ds.isel(xi_rho=xi, eta_rho=eta))
     return xr.concat([*datasets], dim="station")
 
+
 def extract_stations_u(ds: xr.Dataset, xis: list, etas: list):
     datasets = []
     for xi, eta in zip(xis, etas):
         datasets.append(ds.isel(xi_u=xi, eta_u=eta-1))
     return xr.concat([*datasets], dim="station")
+
 
 def extract_stations_v(ds: xr.Dataset, xis: list, etas: list):
     datasets = []
@@ -51,4 +53,3 @@ def plot_variable(variable: pd.DataFrame):
     fig, ax = plt.subplots(figsize=(15, 5))
     cf = ax.contourf(X, Y, variable.values)
     fig.colorbar(cf, ax=ax, location='right', pad=0.01)
-
