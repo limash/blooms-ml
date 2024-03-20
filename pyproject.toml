@@ -12,6 +12,7 @@ dependencies = [
     "xarray[complete]",
     "matplotlib",
     "ipykernel",
+    "scikit-learn",
 ]
 
 [tool.setuptools.packages.find]

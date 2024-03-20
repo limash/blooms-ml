@@ -8,21 +8,21 @@ def extract_stations_rho(ds: xr.Dataset, xis: list, etas: list):
     datasets = []
     for xi, eta in zip(xis, etas):
         datasets.append(ds.isel(xi_rho=xi, eta_rho=eta))
-    return xr.concat([*datasets], dim="station")
+    return xr.concat(datasets, dim="station")
 
 
 def extract_stations_u(ds: xr.Dataset, xis: list, etas: list):
     datasets = []
     for xi, eta in zip(xis, etas):
         datasets.append(ds.isel(xi_u=xi, eta_u=eta-1))
-    return xr.concat([*datasets], dim="station")
+    return xr.concat(datasets, dim="station")
 
 
 def extract_stations_v(ds: xr.Dataset, xis: list, etas: list):
     datasets = []
     for xi, eta in zip(xis, etas):
         datasets.append(ds.isel(xi_v=xi-1, eta_v=eta))
-    return xr.concat([*datasets], dim="station")
+    return xr.concat(datasets, dim="station")
 
 
 def filter_variables_by_dimension(ds: xr.Dataset, dimension: str):
@@ -44,6 +44,23 @@ def merge_edges_to_centers(ds: xr.Dataset):
     ds1 = ds_w.rename_dims({'s_w': 's_rho'})
     ds2 = filter_variables_by_dimension(ds, 's_rho')
     return xr.merge([ds1.drop_vars("s_w"), ds2])
+
+
+def append_rho_profiles(df: pd.DataFrame):
+    nlayers = df.reset_index()['s_rho'].nunique()
+    nstations = df.reset_index()['station'].nunique()
+    dataframes = []
+    # loop through stations to pivot tables and attach rho profiles to all layers
+    for station in range(nstations):
+        df_station = df.loc[df.index.get_level_values('station') == station]
+        df_station = df_station.reset_index()
+        rho = df_station.pivot(index='ocean_time', columns='s_rho', values='rho')
+        rho = rho.loc[rho.index.repeat(nlayers)]
+        rho = rho.rename_axis(None, axis=1)
+        rho = rho.reset_index()
+        df_station = df_station.drop(columns=['station'])
+        dataframes.append(pd.concat([df_station, rho], axis=1))
+    return pd.concat(dataframes, axis=0)
 
 
 def plot_variable(variable: pd.DataFrame):
