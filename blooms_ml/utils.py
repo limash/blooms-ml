@@ -1,9 +1,40 @@
+import random
 import itertools
 
 import numpy as np
 import pandas as pd
 import xarray as xr
 import matplotlib.pyplot as plt
+
+
+def check_iloc(ds: xr.Dataset, xi: int, eta: int):
+    """
+    Check that the coordinates are not at the land
+    ds should be dask backended since .compute() method
+    """
+    rhocheck = (ds.mask_rho.isel(eta_rho=eta, xi_rho=xi) == 1).all().compute().item()
+    ucheck = (ds.mask_u.isel(eta_u=eta, xi_u=xi-1) == 1).all().compute().item()
+    vcheck = (ds.mask_v.isel(eta_v=eta-1, xi_v=xi) == 1).all().compute().item()
+    return all([rhocheck, ucheck, vcheck])
+
+
+def sample_stations(ds: xr.Dataset, num_stations: int):
+    xi_limits = [i for i in range(10, 310)]
+    eta_limits = [i for i in range(10, 220)]
+    stations, st_labels = [], []
+    xis, etas = [], []
+
+    i = 0
+    while True:
+        station = random.sample(xi_limits, k=1)[0], random.sample(eta_limits, k=1)[0]
+        if station not in stations and check_iloc(ds, station[0], station[1]):
+            stations.append(station)
+            st_labels.append(str(i+1))
+            xis.append(station[0])
+            etas.append(station[1])
+            i += 1
+            if i >= num_stations:
+                return stations, st_labels, xis, etas
 
 
 def extract_stations_rho(ds: xr.Dataset, xis: list, etas: list):
@@ -16,14 +47,14 @@ def extract_stations_rho(ds: xr.Dataset, xis: list, etas: list):
 def extract_stations_u(ds: xr.Dataset, xis: list, etas: list):
     datasets = []
     for xi, eta in zip(xis, etas):
-        datasets.append(ds.isel(xi_u=xi, eta_u=eta-1))
+        datasets.append(ds.isel(xi_u=xi-1, eta_u=eta))
     return xr.concat(datasets, dim="station")
 
 
 def extract_stations_v(ds: xr.Dataset, xis: list, etas: list):
     datasets = []
     for xi, eta in zip(xis, etas):
-        datasets.append(ds.isel(xi_v=xi-1, eta_v=eta))
+        datasets.append(ds.isel(xi_v=xi, eta_v=eta-1))
     return xr.concat(datasets, dim="station")
 
 
