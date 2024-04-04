@@ -79,6 +79,12 @@ def merge_edges_to_centers(ds: xr.Dataset):
     return xr.merge([ds1.drop_vars("s_w"), ds2])
 
 
+def normalize_series(row: pd.Series):
+    median_value = row.median()
+    max_value = row.std()
+    return (row - median_value) / max_value
+
+
 def append_rho_profiles(df: pd.DataFrame):
     nlayers = df.reset_index()['s_rho'].nunique()
     nstations = df.reset_index()['station'].nunique()
@@ -88,6 +94,7 @@ def append_rho_profiles(df: pd.DataFrame):
         df_station = df.loc[df.index.get_level_values('station') == station]
         df_station = df_station.reset_index()
         rho = df_station.pivot(index='ocean_time', columns='s_rho', values='rho')
+        rho = rho.apply(normalize_series, axis=1)
         rho = rho.loc[rho.index.repeat(nlayers)]
         rho = rho.rename_axis(None, axis=1)
         rho = rho.reset_index()
