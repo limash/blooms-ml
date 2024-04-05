@@ -7,6 +7,10 @@ import xarray as xr
 import matplotlib.pyplot as plt
 
 
+VARS = ['ocean_time', 's_rho',
+        'rho', 'w', 'P1_c', 'N1_p', 'N3_n', 'N5_s',]
+
+
 def check_iloc(ds: xr.Dataset, xi: int, eta: int):
     """
     Check that the coordinates are not at the land
@@ -80,9 +84,7 @@ def merge_edges_to_centers(ds: xr.Dataset):
 
 
 def normalize_series(row: pd.Series):
-    median_value = row.median()
-    max_value = row.std()
-    return (row - median_value) / max_value
+    return ((row - row.mean()) / row.std()).round(2).astype('float32')
 
 
 def append_rho_profiles(df: pd.DataFrame):
@@ -94,13 +96,54 @@ def append_rho_profiles(df: pd.DataFrame):
         df_station = df.loc[df.index.get_level_values('station') == station]
         df_station = df_station.reset_index()
         rho = df_station.pivot(index='ocean_time', columns='s_rho', values='rho')
+        new_columns = [str(i) for i in range(1, len(rho.columns)+1)]
+        rho.rename(columns=dict(zip(rho.columns[:], new_columns)), inplace=True)
         rho = rho.apply(normalize_series, axis=1)
         rho = rho.loc[rho.index.repeat(nlayers)]
         rho = rho.rename_axis(None, axis=1)
         rho = rho.reset_index()
         df_station = df_station.drop(columns=['station'])
-        dataframes.append(pd.concat([df_station, rho], axis=1))
+        dataframes.append(pd.concat([df_station, rho.iloc[:, 1:]], axis=1))
     return pd.concat(dataframes, axis=0)
+
+
+def get_from_dia(ds_dia: xr.Dataset, xis: list, etas: list):
+    ds = extract_stations_rho(ds_dia, xis, etas)
+    ds = merge_edges_to_centers(ds)
+    return ds[['light_PAR0', 'P1_netPI']].to_dataframe()
+
+
+def get_from_avg(ds_avg: xr.Dataset, xis: list, etas: list):
+    ds_rho = extract_stations_rho(ds_avg, xis, etas)
+    ds_rho = ds_rho.drop_dims(['eta_u', 'eta_v', 'eta_psi', 'xi_u', 'xi_v', 'xi_psi' ])
+    ds_u = extract_stations_u(ds_avg, xis, etas)
+    ds_u = ds_u.drop_dims(['eta_rho', 'eta_v', 'eta_psi', 'xi_rho', 'xi_v', 'xi_psi' ])
+    ds_v = extract_stations_v(ds_avg, xis, etas)
+    ds_v = ds_v.drop_dims(['eta_rho', 'eta_u', 'eta_psi', 'xi_rho', 'xi_u', 'xi_psi' ])
+    ds = xr.merge([ds_rho, ds_u, ds_v])
+
+    ds = merge_edges_to_centers(ds)
+    ds_subset = ds.drop_vars([var for var in ds.variables if var not in VARS])
+    return ds_subset.to_dataframe()
+
+
+def prepare_data(files_dia: list[str], files_avg: list[str]):
+    ds_dia = xr.open_mfdataset(files_dia)
+    ds_avg = xr.open_mfdataset(files_avg)
+    stations, st_labels, xis, etas = sample_stations(ds_dia, 100)
+
+    df_dia = get_from_dia(ds_dia, xis, etas)
+    df = get_from_avg(ds_avg, xis, etas)
+
+    df['light_PAR0'] = df_dia['light_PAR0'].values
+    df['P1_netPI'] = df_dia['P1_netPI'].values
+
+    df = append_rho_profiles(df)
+    df = df[df['s_rho']==-0.02]  # surface
+    df = df.reset_index(drop=True)
+    df = df.drop(columns=['s_rho'])
+    df.iloc[:, 1:9] = df.iloc[:, 1:9].apply(normalize_series, axis=0)
+    return df
 
 
 def plot_variable(variable: pd.DataFrame):
