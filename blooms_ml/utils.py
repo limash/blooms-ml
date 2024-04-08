@@ -87,30 +87,22 @@ def normalize_series(row: pd.Series):
     return ((row - row.mean()) / row.std()).round(2).astype('float32')
 
 
-def append_rho_profiles(df: pd.DataFrame):
-    nlayers = df.reset_index()['s_rho'].nunique()
-    nstations = df.reset_index()['station'].nunique()
-    dataframes = []
-    # loop through stations to pivot tables and attach rho profiles to all layers
-    for station in range(nstations):
-        df_station = df.loc[df.index.get_level_values('station') == station]
-        df_station = df_station.reset_index()
-        rho = df_station.pivot(index='ocean_time', columns='s_rho', values='rho')
-        new_columns = [str(i) for i in range(1, len(rho.columns)+1)]
-        rho.rename(columns=dict(zip(rho.columns[:], new_columns)), inplace=True)
-        rho = rho.apply(normalize_series, axis=1)
-        rho = rho.loc[rho.index.repeat(nlayers)]
-        rho = rho.rename_axis(None, axis=1)
-        rho = rho.reset_index()
-        df_station = df_station.drop(columns=['station'])
-        dataframes.append(pd.concat([df_station, rho.iloc[:, 1:]], axis=1))
-    return pd.concat(dataframes, axis=0)
+def append_rho_profiles(df_station, nlayers: int = 25):
+    df_station = df_station.reset_index(drop=True)
+    rho = df_station.pivot(index='ocean_time', columns='s_rho', values='rho')
+    new_columns = [str(i) for i in range(1, len(rho.columns)+1)]
+    rho.rename(columns=dict(zip(rho.columns[:], new_columns)), inplace=True)
+    rho = rho.apply(normalize_series, axis=1)
+    rho = rho.loc[rho.index.repeat(nlayers)]
+    rho = rho.rename_axis(None, axis=1)
+    rho = rho.reset_index()
+    return pd.concat([df_station, rho.iloc[:, 1:]], axis=1)
 
 
 def get_from_dia(ds_dia: xr.Dataset, xis: list, etas: list):
     ds = extract_stations_rho(ds_dia, xis, etas)
     ds = merge_edges_to_centers(ds)
-    return ds[['light_PAR0', 'P1_netPI']].to_dataframe()
+    return ds[['light_PAR0', 'P1_netPI']].to_dask_dataframe()
 
 
 def get_from_avg(ds_avg: xr.Dataset, xis: list, etas: list):
@@ -124,25 +116,25 @@ def get_from_avg(ds_avg: xr.Dataset, xis: list, etas: list):
 
     ds = merge_edges_to_centers(ds)
     ds_subset = ds.drop_vars([var for var in ds.variables if var not in VARS])
-    return ds_subset.to_dataframe()
+    return ds_subset.to_dask_dataframe()
 
 
-def prepare_data(files_dia: list[str], files_avg: list[str]):
+def prepare_data(files_dia: list[str], files_avg: list[str], num_stations: int):
     ds_dia = xr.open_mfdataset(files_dia)
     ds_avg = xr.open_mfdataset(files_avg)
-    stations, st_labels, xis, etas = sample_stations(ds_dia, 100)
+    stations, st_labels, xis, etas = sample_stations(ds_dia, num_stations)
 
-    df_dia = get_from_dia(ds_dia, xis, etas)
-    df = get_from_avg(ds_avg, xis, etas)
+    ddf_dia = get_from_dia(ds_dia, xis, etas)
+    ddf = get_from_avg(ds_avg, xis, etas)
 
-    df['light_PAR0'] = df_dia['light_PAR0'].values
-    df['P1_netPI'] = df_dia['P1_netPI'].values
+    ddf['light_PAR0'] = ddf_dia['light_PAR0']
+    ddf['P1_netPI'] = ddf_dia['P1_netPI']
+    df = ddf.compute()
 
-    df = append_rho_profiles(df)
-    df = df[df['s_rho']==-0.02]  # surface
+    df = df.groupby('station').apply(append_rho_profiles)
+    df = df[df['s_rho'] > -0.3]  # surface
     df = df.reset_index(drop=True)
-    df = df.drop(columns=['s_rho'])
-    df.iloc[:, 1:9] = df.iloc[:, 1:9].apply(normalize_series, axis=0)
+    df.iloc[:, 3:11] = df.iloc[:, 3:11].apply(normalize_series, axis=0)
     return df
 
 
