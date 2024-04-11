@@ -15,6 +15,16 @@ dependencies = [
     "scikit-learn",
 ]
 
+[project.optional-dependencies]
+jax-cpu = [
+  "jax[cpu]",
+  "flax",
+]
+jax-gpu = [
+  "jax[gpu]",
+  "flax",
+]
+
 [tool.setuptools.packages.find]
 include = ["blooms_ml"]
 

@@ -125,13 +125,18 @@ def prepare_data(files_dia: list[str], files_avg: list[str], num_stations: int):
     stations, st_labels, xis, etas = sample_stations(ds_dia, num_stations)
 
     ddf_dia = get_from_dia(ds_dia, xis, etas)
+    df_dia_orig = ddf_dia.compute()
+
     ddf = get_from_avg(ds_avg, xis, etas)
+    df_orig = ddf.compute()
 
-    ddf['light_PAR0'] = ddf_dia['light_PAR0']
-    ddf['P1_netPI'] = ddf_dia['P1_netPI']
-    df = ddf.compute()
+    df_dia = df_dia_orig.reset_index().drop('index', axis=1).set_index(['station', 'ocean_time', 's_rho'])
+    df = df_orig.reset_index().drop('index', axis=1).set_index(['station', 'ocean_time', 's_rho'])
 
-    df = df.groupby('station').apply(append_rho_profiles)
+    df['light_PAR0'] = df_dia['light_PAR0']
+    df['P1_netPI'] = df_dia['P1_netPI']
+
+    df = df.reset_index().groupby('station').apply(append_rho_profiles)
     df = df[df['s_rho'] > -0.3]  # surface
     df = df.reset_index(drop=True)
     df.iloc[:, 3:11] = df.iloc[:, 3:11].apply(normalize_series, axis=0)
