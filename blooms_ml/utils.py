@@ -16,9 +16,9 @@ def check_iloc(ds: xr.Dataset, xi: int, eta: int):
     Check that the coordinates are not at the land
     ds should be dask backended since .compute() method
     """
-    rhocheck = (ds.mask_rho.isel(eta_rho=eta, xi_rho=xi) == 1).all().compute().item()
-    ucheck = (ds.mask_u.isel(eta_u=eta, xi_u=xi-1) == 1).all().compute().item()
-    vcheck = (ds.mask_v.isel(eta_v=eta-1, xi_v=xi) == 1).all().compute().item()
+    rhocheck = (ds.mask_rho.isel(eta_rho=eta, xi_rho=xi) == 1).all().item()
+    ucheck = (ds.mask_u.isel(eta_u=eta, xi_u=xi-1) == 1).all().item()
+    vcheck = (ds.mask_v.isel(eta_v=eta-1, xi_v=xi) == 1).all().item()
     return all([rhocheck, ucheck, vcheck])
 
 
@@ -39,6 +39,23 @@ def sample_stations(ds: xr.Dataset, num_stations: int):
             i += 1
             if i >= num_stations:
                 return stations, st_labels, xis, etas
+
+
+def sample_stations_sparse(ds: xr.Dataset):
+    stations, st_labels = [], []
+    xis, etas = [], []
+    n = 0
+    for i in range(10, 310, 3):
+        for j in range(10, 220, 3):
+            station = i, j
+            if station not in stations and check_iloc(ds, i, j):
+                stations.append(station)
+                st_labels.append(str(n+1))
+                xis.append(i)
+                etas.append(j)
+                n += 1
+
+    return stations, st_labels, xis, etas
 
 
 def extract_stations_rho(ds: xr.Dataset, xis: list, etas: list):
