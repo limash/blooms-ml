@@ -16,13 +16,23 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-jax-cpu = [
+ml-cpu = [
   "jax[cpu]",
+  "tensorflow",
+  "optax",
   "flax",
+  "clu",
+  "ml-collections",
+  "tensorflow-datasets",
 ]
-jax-gpu = [
+ml-gpu = [
   "jax[gpu]",
+  "tensorflow[and-cuda]",
+  "optax",
   "flax",
+  "clu",
+  "ml-collections",
+  "tensorflow-datasets",
 ]
 
 [tool.setuptools.packages.find]
