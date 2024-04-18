@@ -6,6 +6,9 @@ from flax import linen as nn
 from jax import numpy as jnp
 
 
+NUM_CLASSES = 2
+
+
 class SimpleMLP(nn.Module):
     features: Sequence[int]
 
@@ -20,12 +23,12 @@ class SimpleMLP(nn.Module):
 
 
 @jax.jit
-def apply_model(state, images, labels):
+def apply_model(state, observations, labels):
     """Computes gradients, loss and accuracy for a single batch."""
 
     def loss_fn(params):
-        logits = state.apply_fn({"params": params}, images)
-        one_hot = jax.nn.one_hot(labels, 10)
+        logits = state.apply_fn({"params": params}, observations)
+        one_hot = jax.nn.one_hot(labels, NUM_CLASSES)
         loss = jnp.mean(optax.softmax_cross_entropy(logits=logits, labels=one_hot))
         return loss, logits
 
