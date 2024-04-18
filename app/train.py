@@ -5,6 +5,7 @@ import jax
 import ml_collections
 import numpy as np
 import optax
+import pandas as pd
 import tensorflow_datasets as tfds
 from flax.metrics import tensorboard
 from flax.training import train_state
@@ -46,7 +47,7 @@ def create_train_state(rng, config):
     return train_state.TrainState.create(apply_fn=model.apply, params=params, tx=tx)
 
 
-def get_datasets():
+def get_datasets_test():
     """Load MNIST train and test datasets into memory."""
     ds_builder = tfds.builder("mnist")
     ds_builder.download_and_prepare()
@@ -55,6 +56,11 @@ def get_datasets():
     train_ds["image"] = jnp.float32(train_ds["image"]) / 255.0
     test_ds["image"] = jnp.float32(test_ds["image"]) / 255.0
     return train_ds, test_ds
+
+
+def get_datasets():
+    df = pd.read_parquet(f"{Path.home()}/data_ROHO/300stations-norm.parquet")
+    df = df.drop(columns=['P1_netPI', 'P1_c'])
 
 
 def train_and_evaluate(config: ml_collections.ConfigDict, workdir: str) -> train_state.TrainState:
