@@ -1,11 +1,11 @@
-import random
 import itertools
+import random
 
+import dask.dataframe as dd
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import xarray as xr
-import matplotlib.pyplot as plt
-
 
 VARS = ['ocean_time', 's_rho',
         'rho', 'w', 'P1_c', 'N1_p', 'N3_n', 'N5_s',]
@@ -100,8 +100,36 @@ def merge_edges_to_centers(ds: xr.Dataset):
     return xr.merge([ds1.drop_vars("s_w"), ds2])
 
 
+def labeling(df_rho):
+    df_rho = df_rho.reset_index(drop=True)
+    df_rho['label'] = -1 * df_rho['P1_c'].diff(periods=-1)
+    return df_rho
+
+
 def normalize_series(row: pd.Series):
     return ((row - row.mean()) / row.std()).round(2).astype('float32')
+
+
+def append_rho_profiles_and_labels(df_station, nlayers: int = 25):
+    # add rho profiles
+    df_station = df_station.reset_index(drop=True)
+    rho = df_station.pivot(index='ocean_time', columns='s_rho', values='rho')
+    new_columns = [str(i) for i in range(1, len(rho.columns)+1)]
+    rho.rename(columns=dict(zip(rho.columns[:], new_columns)), inplace=True)
+    rho = rho.apply(normalize_series, axis=1)
+    rho = rho.loc[rho.index.repeat(nlayers)]
+    rho = rho.rename_axis(None, axis=1)
+    rho = rho.reset_index()
+    df_station = pd.concat([df_station, rho.iloc[:, 1:]], axis=1)
+    if isinstance(df_station, dd.DataFrame):
+        df_station = dd.concat([df_station, rho.iloc[:, 1:]], axis=1)
+    elif isinstance(df_station, pd.DataFrame):
+        df_station = pd.concat([df_station, rho.iloc[:, 1:]], axis=1)
+    else:
+        raise ValueError("Unsupported dataframe type")
+    # add label
+    df_station = df_station.reset_index(drop=True).groupby('s_rho').apply(labeling, include_groups=False)
+    return df_station
 
 
 def append_rho_profiles(df_station, nlayers: int = 25):
@@ -122,18 +150,24 @@ def get_from_dia(ds_dia: xr.Dataset, xis: list, etas: list):
     return ds[['light_PAR0', 'P1_netPI']].to_dask_dataframe()
 
 
-def get_from_avg(ds_avg: xr.Dataset, xis: list, etas: list):
+def get_from_avg(ds_avg: xr.Dataset, xis: list, etas: list, is_dask: bool = True):
     ds_rho = extract_stations_rho(ds_avg, xis, etas)
+    # ds_rho = ds_avg.isel(xi_rho=xis, eta_rho=etas)
     ds_rho = ds_rho.drop_dims(['eta_u', 'eta_v', 'eta_psi', 'xi_u', 'xi_v', 'xi_psi' ])
     ds_u = extract_stations_u(ds_avg, xis, etas)
+    # ds_u = ds_avg.isel(xi_u=[x - 1 for x in xis], eta_u=etas)
     ds_u = ds_u.drop_dims(['eta_rho', 'eta_v', 'eta_psi', 'xi_rho', 'xi_v', 'xi_psi' ])
     ds_v = extract_stations_v(ds_avg, xis, etas)
+    # ds_v = ds_avg.isel(xi_v=xis, eta_v=[x - 1 for x in etas])
     ds_v = ds_v.drop_dims(['eta_rho', 'eta_u', 'eta_psi', 'xi_rho', 'xi_u', 'xi_psi' ])
     ds = xr.merge([ds_rho, ds_u, ds_v])
 
     ds = merge_edges_to_centers(ds)
     ds_subset = ds.drop_vars([var for var in ds.variables if var not in VARS])
-    return ds_subset.to_dask_dataframe()
+    if is_dask:
+        return ds_subset.to_dask_dataframe()
+    else:
+        return ds_subset.to_dataframe()
 
 
 def prepare_data(files_dia: list[str], files_avg: list[str], num_stations: int):
