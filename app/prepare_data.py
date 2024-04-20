@@ -1,3 +1,4 @@
+import argparse
 import glob
 import os
 import time
@@ -30,7 +31,7 @@ def prepare_file(file, xis, etas):
     # this can be redundant
     df = df.reset_index().set_index(['station', 'ocean_time', 's_rho'])
     rho = df.reset_index().groupby('station').apply(get_rho_profiles, include_groups=False)
-    # sort for to df indices correspond to rho indices
+    # sort that df indices correspond to rho indices
     df = df.reset_index().set_index(['s_rho', 'station', 'ocean_time']).sort_index(level=['station', 'ocean_time'])
     df = pd.concat([df.reset_index(), rho.reset_index(drop=True)], axis=1)
     df = df[df['s_rho'] >= -0.3]  # surface
@@ -46,8 +47,9 @@ def prepare_file(file, xis, etas):
 def prepare_files(files):
     stations, st_labels, xis, etas = sample_stations_sparse(xr.open_dataset(files[0]))
     start = time.perf_counter()
-    prepare_file(files[0], xis, etas)
-    print(f"Time elapsed {time.perf_counter() - start:.2f} seconds.")
+    for file in files:
+        prepare_file(file, xis, etas)
+        print(f"Time elapsed {time.perf_counter() - start:.2f} seconds.")
     print("Finish.")
 
 
@@ -60,12 +62,44 @@ def prepare_cnps_mean_std(files):
     print("Finish.")
 
 
+def merge_files(files):
+    df = pd.concat([pd.read_parquet(file) for file in files], ignore_index=True)
+    df = df.set_index(['s_rho', 'station', 'ocean_time']).sort_index(level=['station', 'ocean_time'])
+    df = df.reset_index()
+    df.to_parquet(f"{Path.home()}/data_ROHO/roho800_weekly_average.parquet", index=False, engine='pyarrow')
+    print("Finish.")
+
+
+def main():
+    parser = argparse.ArgumentParser(description='Description of your program')
+    parser.add_argument(
+        '--mode',
+        choices=['s', 'p', 'm'],
+        help='Choose mode: s(statistics calculation), p(repare data), or m(merge data)',
+        required=True)
+    parser.add_argument('--limit-memory', action='store_true', help='Limits memory usage')
+
+    args = parser.parse_args()
+
+    if args.limit_memory:
+        cluster = LocalCluster(memory_limit='8GB')
+        client = Client(cluster)  # noqa: F841
+    if args.mode == 's':
+        files = sorted(glob.glob(
+            f"{Path.home()}/fram_shmiak/ROHO800_hindcast_2007_2019_v2bu/roho800_v2bu_avg/*avg*.nc"
+        ))
+        prepare_cnps_mean_std(files)
+    elif args.mode == 'p':
+        files = sorted(glob.glob(
+            f"{Path.home()}/fram_shmiak/ROHO800_hindcast_2007_2019_v2bu/roho800_v2bu_avg/*avg*.nc"
+        ))
+        prepare_files(files)
+    elif args.mode == 'm':
+        files = sorted(glob.glob(
+            f"{Path.home()}/data_ROHO/*avg*.parquet"
+        ))
+        merge_files(files)
+
+
 if __name__ == "__main__":
-    cluster = LocalCluster(memory_limit='8GB')
-    client = Client(cluster)  # noqa: F841
-
-    files = sorted(glob.glob(
-        f"{Path.home()}/fram_shmiak/ROHO800_hindcast_2007_2019_v2bu/roho800_v2bu_avg/*avg*.nc"
-    ))
-
-    prepare_files(files)
+    main()

@@ -15,7 +15,6 @@ VARSMIN = ['ocean_time', 's_rho', 'rho', 'P1_c', 'N1_p', 'N3_n', 'N5_s',]
 def check_iloc(ds: xr.Dataset, xi: int, eta: int):
     """
     Check that the coordinates are not at the land
-    ds should be dask backended since .compute() method
     """
     rhocheck = (ds.mask_rho.isel(eta_rho=eta, xi_rho=xi) == 1).all().item()
     ucheck = (ds.mask_u.isel(eta_u=eta, xi_u=xi-1) == 1).all().item()
