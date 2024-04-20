@@ -9,6 +9,7 @@ import xarray as xr
 
 VARS = ['ocean_time', 's_rho',
         'rho', 'w', 'P1_c', 'N1_p', 'N3_n', 'N5_s',]
+VARSMIN = ['ocean_time', 's_rho', 'rho', 'P1_c', 'N1_p', 'N3_n', 'N5_s',]
 
 
 def check_iloc(ds: xr.Dataset, xi: int, eta: int):
@@ -132,7 +133,7 @@ def append_rho_profiles_and_labels(df_station, nlayers: int = 25):
     return df_station
 
 
-def append_rho_profiles(df_station, nlayers: int = 25):
+def get_rho_profiles(df_station, nlayers: int = 25):
     df_station = df_station.reset_index(drop=True)
     rho = df_station.pivot(index='ocean_time', columns='s_rho', values='rho')
     new_columns = [str(i) for i in range(1, len(rho.columns)+1)]
@@ -140,6 +141,11 @@ def append_rho_profiles(df_station, nlayers: int = 25):
     rho = rho.apply(normalize_series, axis=1)
     rho = rho.loc[rho.index.repeat(nlayers)]
     rho = rho.rename_axis(None, axis=1)
+    return rho
+
+
+def append_rho_profiles(df_station, nlayers: int = 25):
+    rho = get_rho_profiles(df_station, nlayers)
     rho = rho.reset_index()
     return pd.concat([df_station, rho.iloc[:, 1:]], axis=1)
 
@@ -152,13 +158,10 @@ def get_from_dia(ds_dia: xr.Dataset, xis: list, etas: list):
 
 def get_from_avg(ds_avg: xr.Dataset, xis: list, etas: list, is_dask: bool = True):
     ds_rho = extract_stations_rho(ds_avg, xis, etas)
-    # ds_rho = ds_avg.isel(xi_rho=xis, eta_rho=etas)
     ds_rho = ds_rho.drop_dims(['eta_u', 'eta_v', 'eta_psi', 'xi_u', 'xi_v', 'xi_psi' ])
     ds_u = extract_stations_u(ds_avg, xis, etas)
-    # ds_u = ds_avg.isel(xi_u=[x - 1 for x in xis], eta_u=etas)
     ds_u = ds_u.drop_dims(['eta_rho', 'eta_v', 'eta_psi', 'xi_rho', 'xi_v', 'xi_psi' ])
     ds_v = extract_stations_v(ds_avg, xis, etas)
-    # ds_v = ds_avg.isel(xi_v=xis, eta_v=[x - 1 for x in etas])
     ds_v = ds_v.drop_dims(['eta_rho', 'eta_u', 'eta_psi', 'xi_rho', 'xi_u', 'xi_psi' ])
     ds = xr.merge([ds_rho, ds_u, ds_v])
 
@@ -168,6 +171,12 @@ def get_from_avg(ds_avg: xr.Dataset, xis: list, etas: list, is_dask: bool = True
         return ds_subset.to_dask_dataframe()
     else:
         return ds_subset.to_dataframe()
+
+
+def get_stations(ds: xr.Dataset, xis: list, etas: list):
+    ds = ds.drop_vars([var for var in ds.variables if var not in VARSMIN])
+    ds = extract_stations_rho(ds, xis, etas)
+    return ds.to_dataframe()
 
 
 def prepare_data(files_dia: list[str], files_avg: list[str], num_stations: int):
