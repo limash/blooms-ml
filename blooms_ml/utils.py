@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import xarray as xr
+from jax import numpy as jnp
 
 VARS = ['ocean_time', 's_rho',
         'rho', 'w', 'P1_c', 'N1_p', 'N3_n', 'N5_s',]
@@ -269,3 +270,37 @@ def timeit(func):
         print(f"Function '{func.__name__}' took {execution_time:.4f} seconds to complete.")
         return result
     return wrapper
+
+
+@timeit
+def get_datasets(datadir):
+    # open
+    df = pd.read_parquet(f"{datadir}roho800_weekly_average.parquet")
+    (p1_c_mean, n1_p_mean, n3_n_mean, n5_s_mean,
+     p1_c_std, n1_p_std, n3_n_std, n5_s_std) = get_stats(f"{datadir}cnps_mean_std.csv")
+    # label
+    df = df.groupby(['station', 's_rho']).apply(labeling, include_groups=False)
+    df = df.reset_index().drop(columns='level_2')
+    df.rename(columns={'label': 'y'}, inplace=True)
+    df['label'] = np.where(df['y'] > 1, 1, 0)
+    # clean
+    df = df[df['y'].notna()]
+    df = df.drop(columns=['station', 's_rho', 'rho', 'y'])
+    # "normalize"
+    df['P1_c'] = ((df['P1_c'] - float(p1_c_mean)) / float(p1_c_std)).round(2).astype('float32')
+    df['N1_p'] = ((df['N1_p'] - float(n1_p_mean)) / float(n1_p_std)).round(2).astype('float32')
+    df['N3_n'] = ((df['N3_n'] - float(n3_n_mean)) / float(n3_n_std)).round(2).astype('float32')
+    df['N5_s'] = ((df['N5_s'] - float(n5_s_mean)) / float(n5_s_std)).round(2).astype('float32')
+    # split
+    df_train = df[df['ocean_time'] < '2013-01-01']
+    df_test = df[df['ocean_time'] > '2013-01-01']
+    del df
+    train_data = {
+        'label': df_train['label'].values,
+        'observations': jnp.float32(df_train.drop(columns=['ocean_time', 'label', 'P1_c']).values),
+    }
+    test_data = {
+        'label': df_test['label'].values,
+        'observations': jnp.float32(df_test.drop(columns=['ocean_time', 'label', 'P1_c']).values),
+    }
+    return train_data, test_data
