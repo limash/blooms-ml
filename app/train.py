@@ -32,12 +32,12 @@ def main():
     config.num_epochs = args.num_epochs
     config.batch_size = args.batch_size
 
+    if not os.path.exists(args.workdir):
+        os.mkdir(args.workdir)
     workdir = tempfile.mkdtemp(prefix=args.workdir)
     print(f"Tensorboard log is in {workdir}.")
     datadir = args.datadir
 
-    if not os.path.exists(workdir):
-        os.mkdir(workdir)
     train_and_evaluate(config=config, workdir=workdir, datadir=datadir)
 
 
