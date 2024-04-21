@@ -71,11 +71,11 @@ def merge_files(files):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Description of your program')
+    parser = argparse.ArgumentParser(description='Prepare ROHO800 modeled data for a ML model.')
     parser.add_argument(
         '--mode',
         choices=['s', 'p', 'm'],
-        help='Choose mode: s(statistics calculation), p(repare data), or m(merge data)',
+        help='Choose mode: s(statistics calculation), p(prepare data), or m(merge data)',
         required=True)
     parser.add_argument('--limit-memory', action='store_true', help='Limits memory usage')
 

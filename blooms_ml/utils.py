@@ -1,5 +1,8 @@
+import csv
+import functools
 import itertools
 import random
+import time
 
 import dask.dataframe as dd
 import matplotlib.pyplot as plt
@@ -245,3 +248,24 @@ def plot_confusion_matrix(cm, classes,
     plt.tight_layout()
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
+
+
+def get_stats(filepath: str):
+    with open(filepath, newline='') as file:
+        csv_reader = csv.reader(file)
+        for _ in range(2):
+            (_, p1_c_mean, n1_p_mean, n3_n_mean, n5_s_mean,
+                p1_c_std, n1_p_std, n3_n_std, n5_s_std) = next(csv_reader, None)
+    return p1_c_mean, n1_p_mean, n3_n_mean, n5_s_mean, p1_c_std, n1_p_std, n3_n_std, n5_s_std
+
+
+def timeit(func):
+    """Decorator to measure and report the execution time of a function."""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = time.perf_counter()
+        result = func(*args, **kwargs)
+        execution_time = time.perf_counter() - start_time
+        print(f"Function '{func.__name__}' took {execution_time:.4f} seconds to complete.")
+        return result
+    return wrapper
