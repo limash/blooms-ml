@@ -1,3 +1,4 @@
+import os
 from collections.abc import Sequence
 
 import jax
@@ -115,7 +116,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     train_ds, test_ds = get_datasets(datadir)
     rng = jax.random.key(0)
 
-    summary_writer = tensorboard.SummaryWriter(workdir)
+    summary_writer = tensorboard.SummaryWriter(os.path.join(workdir, "tensorboard/"))
     summary_writer.hparams(dict(config))
 
     rng, init_rng = jax.random.split(rng)

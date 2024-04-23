@@ -1,6 +1,7 @@
 import csv
 import functools
 import itertools
+import os
 import random
 import time
 
@@ -275,9 +276,9 @@ def timeit(func):
 @timeit
 def get_datasets(datadir):
     # open
-    df = pd.read_parquet(f"{datadir}roho800_weekly_average.parquet")
+    df = pd.read_parquet(os.path.join(datadir, "roho800_weekly_average.parquet"))
     (p1_c_mean, n1_p_mean, n3_n_mean, n5_s_mean,
-     p1_c_std, n1_p_std, n3_n_std, n5_s_std) = get_stats(f"{datadir}cnps_mean_std.csv")
+     p1_c_std, n1_p_std, n3_n_std, n5_s_std) = get_stats(os.path.join(datadir, "cnps_mean_std.csv"))
     # label
     df = df.groupby(['station', 's_rho']).apply(labeling, include_groups=False)
     df = df.reset_index().drop(columns='level_2')
