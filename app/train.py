@@ -5,8 +5,7 @@ import os
 import tempfile
 from pathlib import Path
 
-import orbax.checkpoint
-from flax.training import orbax_utils
+import orbax.checkpoint as ocp
 
 from blooms_ml.configs import default
 from blooms_ml.learning import train_and_evaluate
@@ -42,11 +41,8 @@ def main():
     datadir = args.datadir
 
     state = train_and_evaluate(config=config, workdir=workdir, datadir=datadir)
-
-    ckpt = {'state': state}
-    orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
-    save_args = orbax_utils.save_args_from_target(ckpt)
-    orbax_checkpointer.save(os.path.join(workdir, "checkpoint"), ckpt, save_args=save_args)
+    orbax_checkpointer = ocp.StandardCheckpointer()
+    orbax_checkpointer.save(os.path.join(workdir, "checkpoint"), state)
 
 
 if __name__ == "__main__":
