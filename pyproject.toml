@@ -25,15 +25,6 @@ ml-cpu = [
   "ml-collections",
   "tensorflow-datasets",
 ]
-ml-gpu = [
-  "jax[gpu]",
-  "tensorflow[and-cuda]",
-  "optax",
-  "flax",
-  "clu",
-  "ml-collections",
-  "tensorflow-datasets",
-]
 
 [tool.setuptools.packages.find]
 include = ["blooms_ml"]
