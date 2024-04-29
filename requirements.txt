@@ -1,4 +1,4 @@
--f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html 
+-f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 jax[cuda12_pip]
 tensorflow[and-cuda]
 optax
@@ -6,4 +6,3 @@ flax
 clu
 ml-collections
 tensorflow-datasets
-
