@@ -268,7 +268,7 @@ def get_dataframe(datadir):
     df = df.groupby(['station', 's_rho']).apply(labeling, include_groups=False)
     df = df.reset_index().drop(columns='level_2')
     df.rename(columns={'label': 'y'}, inplace=True)
-    df['label'] = np.where(df['y'] > 1, 1, 0)
+    df['label'] = np.where(df['y'] > 3, 1, 0)
     return df
 
 
