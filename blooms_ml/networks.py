@@ -1,4 +1,4 @@
-# Copyright 2024 The Flax Authors.
+# Copyright 2024 The Blooms-ML Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,21 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Default Hyperparameter configuration."""
+from collections.abc import Sequence
 
-import ml_collections
-
-
-def get_config():
-  """Get the default hyperparameter configuration."""
-  config = ml_collections.ConfigDict()
-
-  config.learning_rate = 0.1
-  config.momentum = 0.9
-  config.batch_size = 128
-  config.num_epochs = 10
-  return config
+from flax import linen as nn
 
 
-def metrics():
-  return []
+class SimpleMLP(nn.Module):
+    features: Sequence[int]
+
+    @nn.compact
+    def __call__(self, inputs):
+        x = inputs
+        for i, feat in enumerate(self.features):
+            x = nn.Dense(feat, name=f"layers_{i}")(x)
+            if i != len(self.features) - 1:
+                x = nn.relu(x)
+        return x

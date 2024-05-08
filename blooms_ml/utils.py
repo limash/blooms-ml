@@ -1,3 +1,17 @@
+# Copyright 2024 The Blooms-ML Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import csv
 import functools
 import itertools
@@ -108,6 +122,12 @@ def merge_edges_to_centers(ds: xr.Dataset):
 def labeling(df_rho):
     df_rho = df_rho.reset_index(drop=True)
     df_rho['label'] = -1 * df_rho['P1_c'].diff(periods=-1)
+    return df_rho
+
+
+def add_differences(df_rho):
+    df_rho = df_rho.reset_index(drop=True)
+    df_rho[['rho_diff', 'P1_c_diff', 'N1_p_diff', 'N3_n_diff', 'N5_s_diff']] = df_rho[['rho', 'P1_c', 'N1_p', 'N3_n', 'N5_s']].diff()
     return df_rho
 
 
