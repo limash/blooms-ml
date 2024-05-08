@@ -67,6 +67,7 @@ class BinaryClassificator:
         train_ds_size = len(train_ds["observations"])
         steps_per_epoch = train_ds_size // batch_size
 
+        # this is fast on gpu and slow on cpu
         perms = jax.random.permutation(rng, len(train_ds["observations"]))
         perms = perms[: steps_per_epoch * batch_size]  # skip incomplete batch
         perms = perms.reshape((steps_per_epoch, batch_size))
@@ -103,7 +104,9 @@ class BinaryClassificator:
                            desc="Test batches", position=1, leave=False):
             batch_observations = test_ds["observations"][i:i + batch_size, ...]
             batch_labels = test_ds["label"][i:i + batch_size, ...]
-            _, loss, accuracy = apply_classification_model(state, batch_observations, batch_labels)
+            _, loss, accuracy = apply_classification_model(
+                state, batch_observations, batch_labels, BinaryClassificator.NUM_CLASSES
+                )
             epoch_loss.append(loss)
             epoch_accuracy.append(accuracy)
         test_loss = np.mean(epoch_loss)
@@ -114,11 +117,12 @@ class BinaryClassificator:
         }
 
 
-def create_train_state(rng, config):
+def create_train_state(rng, config, obs_shape):
     """Creates initial `TrainState`."""
-    model = config.network(features=config.features)
-    params = model.init(rng, jnp.ones([1, *list(config.obs_shape[1:])]))["params"]
-    tx = optax.sgd(config.learning_rate, config.momentum)
+    model = config.network(**config.args_network)
+    # Remove 'time' dimension and add 'batch 1' instead
+    params = model.init(rng, jnp.ones([1, *list(obs_shape[1:])]))["params"]
+    tx = config.optimizer(**config.args_optimizer)
     return train_state.TrainState.create(apply_fn=model.apply, params=params, tx=tx)
 
 
@@ -143,14 +147,15 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
 
     rng, init_rng = jax.random.split(rng)
     state = create_train_state(init_rng, config, train_ds['observations'].shape)
+    trainer = config.trainer()
 
     for epoch in tqdm.tqdm(range(config.num_epochs), desc="Epochs", position=0):
         rng, input_rng = jax.random.split(rng)
-        state, info_train = config.trainer.train_epoch(state, train_ds, config.batch_size, input_rng)
-        info_test = config.trainer.test_epoch(state, test_ds, config.batch_size)
+        state, info_train = trainer.train_epoch(state, train_ds, config.batch_size, input_rng)
+        info_test = trainer.test_epoch(state, test_ds, config.batch_size)
 
         info = info_train | info_test
-        for key, value in info:
+        for key, value in info.items():
             summary_writer.scalar(key, value, epoch)
 
     summary_writer.flush()

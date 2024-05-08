@@ -15,15 +15,17 @@
 import ml_collections
 import optax
 
+from blooms_ml.learning import BinaryClassificator
 from blooms_ml.networks import SimpleMLP
 from blooms_ml.utils import get_datasets
 
 
 def get_config():
-  """Get the default hyperparameter configuration."""
+
   config = ml_collections.ConfigDict()
 
   config.get_datasets = get_datasets
+  config.trainer = BinaryClassificator
 
   config.network = SimpleMLP
   config.args_network = ml_collections.ConfigDict()
