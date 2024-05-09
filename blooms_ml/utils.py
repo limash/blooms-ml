@@ -127,7 +127,8 @@ def labeling(df_rho):
 
 def add_differences(df_rho):
     df_rho = df_rho.reset_index(drop=True)
-    df_rho[['rho_diff', 'P1_c_diff', 'N1_p_diff', 'N3_n_diff', 'N5_s_diff']] = df_rho[['rho', 'P1_c', 'N1_p', 'N3_n', 'N5_s']].diff()
+    df_rho[['rho_diff', 'P1_c_diff', 'N1_p_diff', 'N3_n_diff', 'N5_s_diff']] = \
+        df_rho[['rho', 'P1_c', 'N1_p', 'N3_n', 'N5_s']].diff()
     return df_rho
 
 

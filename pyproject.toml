@@ -50,3 +50,12 @@ select = [
     # isort
     "I",
 ]
+ignore = [
+  # zip-without-explicit-strict
+  "B905"
+]
+
+# Ignore `E402` (import violations) in all `__init__.py` files, and in select subdirectories.
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["E402"]
+"**/{tests,docs,tools}/*" = ["E402"]
