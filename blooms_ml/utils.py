@@ -134,7 +134,7 @@ def add_differences(df_rho):
 
 def add_previous(df_rho):
     df_rho = df_rho.reset_index(drop=True)
-    columns_original = ['rho', 'N1_p', 'N3_n', 'N5_s'] + [str(i) for i in range(1, 26)]
+    columns_original = ['rho', 'P1_c', 'N1_p', 'N3_n', 'N5_s'] + [str(i) for i in range(1, 26)]
     columns_shifted1 = [f"{column}_1" for column in columns_original]
     columns_shifted2 = [f"{column}_2" for column in columns_original]
     df_rho[columns_shifted1] = df_rho[columns_original].shift(1)
@@ -343,10 +343,16 @@ def get_datasets_classification(datadir):
     return train_data, test_data
 
 
+@timeit
 def get_datasets_regression(datadir):
     df = pd.read_parquet(os.path.join(datadir, "roho800_weekly_average_stacked.parquet"))
-    df.rename(columns={'P1_c': 'y'}, inplace=True)
+
+    df = df.groupby(['station', 's_rho']).apply(labeling, include_groups=False)
+    df = df.reset_index().drop(columns='level_2')
+    df.rename(columns={'label': 'y'}, inplace=True)
+    df = df[df['y'].notna()]
     df = df.drop(columns=['station', 's_rho'])
+    df['y'] = df['y'].clip(lower=-1, upper=1)
     # split
     df_train = df[df['ocean_time'] < '2013-01-01']
     df_test = df[df['ocean_time'] > '2013-01-01']

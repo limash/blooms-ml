@@ -51,10 +51,10 @@ def regression():
 
   config.network = MLP
   config.args_network = ml_collections.ConfigDict()
-  config.args_network.features = [500, 300, 500, 1]
+  config.args_network.features = [300, 100, 300, 1]
 
   config.optimizer = optax.adam
   config.args_optimizer = ml_collections.ConfigDict()
-  config.args_optimizer.learning_rate = 0.1
+  config.args_optimizer.learning_rate = 0.01
 
   return config
