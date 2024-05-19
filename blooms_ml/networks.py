@@ -17,7 +17,7 @@ from collections.abc import Sequence
 from flax import linen as nn
 
 
-class SimpleMLP(nn.Module):
+class MLP(nn.Module):
     features: Sequence[int]
 
     @nn.compact

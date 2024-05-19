@@ -15,19 +15,22 @@
 import ml_collections
 import optax
 
-from blooms_ml.learning import BinaryClassificator
-from blooms_ml.networks import SimpleMLP
-from blooms_ml.utils import get_datasets_classification
+from blooms_ml.learning import BinaryClassificator, Regressor
+from blooms_ml.networks import MLP
+from blooms_ml.utils import (
+  get_datasets_classification,
+  get_datasets_regression,
+)
 
 
-def classification_binary():
+def classification():
 
   config = ml_collections.ConfigDict()
 
   config.get_datasets = get_datasets_classification
   config.trainer = BinaryClassificator
 
-  config.network = SimpleMLP
+  config.network = MLP
   config.args_network = ml_collections.ConfigDict()
   config.args_network.features = [300, 100, 300, 2]
 
@@ -39,5 +42,19 @@ def classification_binary():
   return config
 
 
-def metrics():
-  return []
+def regression():
+
+  config = ml_collections.ConfigDict()
+
+  config.get_datasets = get_datasets_regression
+  config.trainer = Regressor
+
+  config.network = MLP
+  config.args_network = ml_collections.ConfigDict()
+  config.args_network.features = [500, 300, 500, 1]
+
+  config.optimizer = optax.adam
+  config.args_optimizer = ml_collections.ConfigDict()
+  config.args_optimizer.learning_rate = 0.1
+
+  return config

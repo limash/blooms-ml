@@ -19,7 +19,7 @@ from pathlib import Path
 
 import orbax.checkpoint as ocp
 
-from blooms_ml.configs import configs
+from blooms_ml import configs
 from blooms_ml.learning import train_and_evaluate
 
 
@@ -39,10 +39,16 @@ def main():
     )
     parser.add_argument("--num-epochs", default=10, type=int)
     parser.add_argument("--batch-size", default=100000, type=int)
+    parser.add_argument("--config", required=True, type=str,
+                        choices=('classification', 'regression'))
 
     args = parser.parse_args()
 
-    config = configs.classification_binary()
+    if args.config == 'classification':
+        config = configs.classification()
+    elif args.config == 'regression':
+        config = configs.regression()
+
     config.num_epochs = args.num_epochs
     config.batch_size = args.batch_size
 

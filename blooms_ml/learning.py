@@ -42,6 +42,20 @@ def apply_classification_model(state, observations, labels, num_classes):
     return grads, loss, accuracy
 
 
+@partial(jax.jit)
+def apply_regression_model(state, observations, y):
+    """Computes gradients, loss and accuracy for a single batch."""
+
+    def loss_fn(params):
+        predictions = jnp.squeeze(state.apply_fn({"params": params}, observations))
+        loss = jnp.mean(optax.losses.l2_loss(predictions=predictions, targets=y))
+        return loss
+
+    grad_fn = jax.value_and_grad(loss_fn)
+    loss, grads = grad_fn(state.params)
+    return grads, loss
+
+
 @jax.jit
 def update_model(state, grads):
     """
@@ -114,6 +128,62 @@ class BinaryClassificator:
         return {
             "test_loss": test_loss,
             "test_accuracy": test_accuracy,
+        }
+
+
+@dataclass
+class Regressor:
+
+    @staticmethod
+    def train_epoch(state, train_ds, batch_size, rng):
+        """
+        Train for a single epoch.
+        Returns:
+            state: updated flax.training.train_state
+            info: dict with auxiliary information
+        """
+        train_ds_size = len(train_ds["observations"])
+        steps_per_epoch = train_ds_size // batch_size
+
+        # this is fast on gpu and slow on cpu
+        perms = jax.random.permutation(rng, len(train_ds["observations"]))
+        perms = perms[: steps_per_epoch * batch_size]  # skip incomplete batch
+        perms = perms.reshape((steps_per_epoch, batch_size))
+
+        epoch_loss = []
+
+        for perm in tqdm.tqdm(perms, desc="Train batches", position=1, leave=False):
+            batch_observations = train_ds["observations"][perm, ...]
+            batch_y = train_ds["y"][perm, ...]
+            grads, loss = apply_regression_model(
+                state, batch_observations, batch_y
+                )
+            state = update_model(state, grads)
+            epoch_loss.append(loss)
+        train_loss = np.mean(epoch_loss)
+        return state, {
+            "train_loss": train_loss,
+        }
+
+    @staticmethod
+    def test_epoch(state, test_ds, batch_size):
+        """
+        Returns:
+            info: dict with auxiliary information
+        """
+        epoch_loss = []
+
+        for i in tqdm.tqdm(range(0, len(test_ds["observations"]), batch_size),
+                           desc="Test batches", position=1, leave=False):
+            batch_observations = test_ds["observations"][i:i + batch_size, ...]
+            batch_y = test_ds["y"][i:i + batch_size, ...]
+            _, loss = apply_regression_model(
+                state, batch_observations, batch_y
+                )
+            epoch_loss.append(loss)
+        test_loss = np.mean(epoch_loss)
+        return {
+            "test_loss": test_loss,
         }
 
 
