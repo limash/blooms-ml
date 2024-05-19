@@ -132,6 +132,16 @@ def add_differences(df_rho):
     return df_rho
 
 
+def add_previous(df_rho):
+    df_rho = df_rho.reset_index(drop=True)
+    columns_original = ['rho', 'P1_c', 'N1_p', 'N3_n', 'N5_s'] + [str(i) for i in range(1, 26)]
+    columns_shifted1 = [f"{column}_1" for column in columns_original]
+    columns_shifted2 = [f"{column}_2" for column in columns_original]
+    df_rho[columns_shifted1] = df_rho[columns_original].shift(1)
+    df_rho[columns_shifted2] = df_rho[columns_original].shift(2)
+    return df_rho[2:]  # remove NaNs from shifting
+
+
 def normalize_series(row: pd.Series):
     return ((row - row.mean()) / row.std()).round(2).astype('float32')
 
@@ -306,7 +316,7 @@ def timeit(func):
 
 
 @timeit
-def get_datasets(datadir):
+def get_datasets_classification(datadir):
     df = get_dataframe(datadir)
     (p1_c_mean, n1_p_mean, n3_n_mean, n5_s_mean,
      p1_c_std, n1_p_std, n3_n_std, n5_s_std) = get_stats(os.path.join(datadir, "cnps_mean_std.csv"))

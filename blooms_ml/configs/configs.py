@@ -17,14 +17,14 @@ import optax
 
 from blooms_ml.learning import BinaryClassificator
 from blooms_ml.networks import SimpleMLP
-from blooms_ml.utils import get_datasets
+from blooms_ml.utils import get_datasets_classification
 
 
-def get_config():
+def classification_binary():
 
   config = ml_collections.ConfigDict()
 
-  config.get_datasets = get_datasets
+  config.get_datasets = get_datasets_classification
   config.trainer = BinaryClassificator
 
   config.network = SimpleMLP
