@@ -20,6 +20,7 @@ import jax
 import ml_collections
 import numpy as np
 import optax
+import orbax.checkpoint as ocp
 import tqdm.auto as tqdm
 from flax.metrics import tensorboard
 from flax.training import train_state
@@ -242,7 +243,9 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
       The train state (which includes the `.params`).
     """
     train_ds, test_ds = config.get_datasets(datadir)
-    rng = jax.random.key(0)
+
+    # orbax so far cannot recognize a new key<fry> dtype, use the old one
+    rng = jax.random.PRNGKey(0)  # jax.random.key(0)
 
     summary_writer = tensorboard.SummaryWriter(os.path.join(workdir, "tensorboard/"))
     summary_writer.hparams(dict(config))
@@ -251,7 +254,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     state = create_train_state(init_rng, config, train_ds['observations'].shape)
     trainer = config.trainer()
 
-    for epoch in tqdm.tqdm(range(config.num_epochs), desc="Epochs", position=0):
+    for epoch in tqdm.tqdm(range(1, config.num_epochs + 1), desc="Epochs", position=0):
         rng, input_rng = jax.random.split(rng)
         state, info_train = trainer.train_epoch(state, train_ds, config.batch_size, input_rng)
         info_test = trainer.test_epoch(state, test_ds, config.batch_size)
@@ -259,6 +262,8 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
         info = info_train | info_test
         for key, value in info.items():
             summary_writer.scalar(key, value, epoch)
+        summary_writer.flush()
 
-    summary_writer.flush()
-    return state
+        if epoch % config.save_epochs == 0:
+            orbax_checkpointer = ocp.StandardCheckpointer()
+            orbax_checkpointer.save(os.path.join(workdir, f"chkpt_epoch_{epoch:03}"), state)

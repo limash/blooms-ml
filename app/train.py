@@ -17,8 +17,6 @@ import os
 import tempfile
 from pathlib import Path
 
-import orbax.checkpoint as ocp
-
 from blooms_ml import configs
 from blooms_ml.learning import train_and_evaluate
 
@@ -38,6 +36,7 @@ def main():
         help="Path to the input data."
     )
     parser.add_argument("--num-epochs", default=10, type=int)
+    parser.add_argument("--save-epochs", default=10, type=int)
     parser.add_argument("--batch-size", default=100000, type=int)
     parser.add_argument("--config", required=True, type=str,
                         choices=('classification', 'regression'))
@@ -50,6 +49,7 @@ def main():
         config = configs.regression()
 
     config.num_epochs = args.num_epochs
+    config.save_epochs = args.save_epochs
     config.batch_size = args.batch_size
 
     if not os.path.exists(args.workdir):
@@ -58,10 +58,7 @@ def main():
     print(f"Tensorboard log is in {workdir}.")
     datadir = args.datadir
 
-    state = train_and_evaluate(config=config, workdir=workdir, datadir=datadir)
-    orbax_checkpointer = ocp.StandardCheckpointer()
-    orbax_checkpointer.save(os.path.join(workdir, "checkpoint"), state)
-
+    train_and_evaluate(config=config, workdir=workdir, datadir=datadir)
 
 if __name__ == "__main__":
     main()
