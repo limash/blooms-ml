@@ -21,10 +21,23 @@ class MLP(nn.Module):
     features: Sequence[int]
 
     @nn.compact
-    def __call__(self, inputs):
-        x = inputs
+    def __call__(self, x, *args, **kwargs):
         for i, feat in enumerate(self.features):
             x = nn.Dense(feat, name=f"layers_{i}")(x)
             if i != len(self.features) - 1:
+                x = nn.relu(x)
+        return x
+
+
+class MLPDropout(nn.Module):
+    features: Sequence[int]
+    dropout_rate: float = 0.1
+
+    @nn.compact
+    def __call__(self, x, *args, training:bool, **kwargs):
+        for i, feat in enumerate(self.features):
+            x = nn.Dense(feat, name=f"layers_{i}")(x)
+            if i != len(self.features) - 1:
+                x = nn.Dropout(rate=self.dropout_rate, deterministic=not training)(x)
                 x = nn.relu(x)
         return x

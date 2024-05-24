@@ -16,7 +16,7 @@ import ml_collections
 import optax
 
 from blooms_ml.learning import BinaryClassificator, Regressor
-from blooms_ml.networks import MLP
+from blooms_ml.networks import MLP, MLPDropout
 from blooms_ml.utils import (
   get_datasets_classification,
   get_datasets_regression,
@@ -49,12 +49,12 @@ def regression():
   config.get_datasets = get_datasets_regression
   config.trainer = Regressor
 
-  config.network = MLP
+  config.network = MLPDropout
   config.args_network = ml_collections.ConfigDict()
   config.args_network.features = [300, 100, 300, 1]
 
   config.optimizer = optax.adam
   config.args_optimizer = ml_collections.ConfigDict()
-  config.args_optimizer.learning_rate = 0.01
+  config.args_optimizer.learning_rate = 1e-3
 
   return config

@@ -26,6 +26,10 @@ from flax.training import train_state
 from jax import numpy as jnp
 
 
+class TrainState(train_state.TrainState):
+  key: jax.Array
+
+
 @partial(jax.jit, static_argnames=['num_classes'])
 def apply_classification_model(state, observations, labels, num_classes):
     """Computes gradients, loss and accuracy for a single batch."""
@@ -42,13 +46,37 @@ def apply_classification_model(state, observations, labels, num_classes):
     return grads, loss, accuracy
 
 
-@partial(jax.jit)
-def apply_regression_model(state, observations, y):
+def l2_loss(x, alpha):
+    return alpha * (x ** 2).mean()
+
+
+@partial(jax.jit, static_argnames=['loss_alpha'])
+def regression_eval_loss(state, observations, y, loss_alpha=1e-3):
+    predictions = jnp.squeeze(state.apply_fn(
+        {"params": state.params}, 
+        x = observations,
+        training=False,
+        ))
+    loss = jnp.mean(optax.losses.l2_loss(predictions=predictions, targets=y))
+    loss += sum(l2_loss(w, alpha=loss_alpha) for w in jax.tree_leaves(state.params))
+    return loss
+
+
+@partial(jax.jit, static_argnames=['loss_alpha'])
+def apply_regression_model(state, observations, y, loss_alpha=1e-3):
     """Computes gradients, loss and accuracy for a single batch."""
 
+    dropout_train_key = jax.random.fold_in(key=state.key, data=state.step)
+
     def loss_fn(params):
-        predictions = jnp.squeeze(state.apply_fn({"params": params}, observations))
+        predictions = jnp.squeeze(state.apply_fn(
+            {"params": params}, 
+            x = observations,
+            training=True,
+            rngs={'dropout': dropout_train_key},
+            ))
         loss = jnp.mean(optax.losses.l2_loss(predictions=predictions, targets=y))
+        loss += sum(l2_loss(w, alpha=loss_alpha) for w in jax.tree_leaves(params))
         return loss
 
     grad_fn = jax.value_and_grad(loss_fn)
@@ -177,7 +205,7 @@ class Regressor:
                            desc="Test batches", position=1, leave=False):
             batch_observations = test_ds["observations"][i:i + batch_size, ...]
             batch_y = test_ds["y"][i:i + batch_size, ...]
-            _, loss = apply_regression_model(
+            loss = regression_eval_loss(
                 state, batch_observations, batch_y
                 )
             epoch_loss.append(loss)
@@ -189,11 +217,15 @@ class Regressor:
 
 def create_train_state(rng, config, obs_shape):
     """Creates initial `TrainState`."""
+    state_rng, init_rng = jax.random.split(rng)
     model = config.network(**config.args_network)
     # Remove 'time' dimension and add 'batch 1' instead
-    params = model.init(rng, jnp.ones([1, *list(obs_shape[1:])]))["params"]
+    params = model.init(init_rng, jnp.ones([1, *list(obs_shape[1:])]), training=False)["params"]
     tx = config.optimizer(**config.args_optimizer)
-    return train_state.TrainState.create(apply_fn=model.apply, params=params, tx=tx)
+    return TrainState.create(
+        apply_fn=model.apply, 
+        params=params, key=state_rng, tx=tx
+        )
 
 
 def train_and_evaluate(config: ml_collections.ConfigDict,
