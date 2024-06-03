@@ -28,7 +28,7 @@ from jax import numpy as jnp
 
 
 class TrainState(train_state.TrainState):
-  key: jax.Array
+    key: jax.Array
 
 
 @partial(jax.jit, static_argnames=['num_classes'])
@@ -231,7 +231,7 @@ def create_train_state(rng, config, obs_shape):
 
 def train_and_evaluate(config: ml_collections.ConfigDict,
                        workdir: str,
-                       datadir: str) -> train_state.TrainState:
+                       datadir: str):
     """Execute model training and evaluation loop.
 
     Args:

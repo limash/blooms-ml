@@ -125,11 +125,24 @@ def labeling(df_rho):
     return df_rho
 
 
+def labeling_incremented(df_rho):
+    df_rho = df_rho.reset_index(drop=True)
+    df_rho['label'] = df_rho['P1_c'].shift(periods=-1)
+    return df_rho
+
+
 def add_differences(df_rho):
     df_rho = df_rho.reset_index(drop=True)
     df_rho[['rho_diff', 'P1_c_diff', 'N1_p_diff', 'N3_n_diff', 'N5_s_diff']] = \
-        df_rho[['rho', 'P1_c', 'N1_p', 'N3_n', 'N5_s']].diff()
-    return df_rho
+        df_rho[['rho', 'P1_c', 'N1_p', 'N3_n', 'N5_s']].diff().clip(lower=-1, upper=1)
+    return df_rho[1:]
+
+
+def to_differences(df_rho):
+    df_rho = df_rho.reset_index(drop=True)
+    df_rho[['rho', 'P1_c', 'N1_p', 'N3_n', 'N5_s']] = \
+        df_rho[['rho', 'P1_c', 'N1_p', 'N3_n', 'N5_s']].diff().clip(lower=-1, upper=1)
+    return df_rho[1:]
 
 
 def add_previous(df_rho):
@@ -347,7 +360,7 @@ def get_datasets_classification(datadir):
 def get_datasets_regression(datadir):
     df = pd.read_parquet(os.path.join(datadir, "roho800_weekly_average_stacked.parquet"))
 
-    df = df.groupby(['station', 's_rho']).apply(labeling, include_groups=False)
+    df = df.groupby(['station', 's_rho']).apply(labeling_incremented, include_groups=False)
     df = df.reset_index().drop(columns='level_2')
     df.rename(columns={'label': 'y'}, inplace=True)
     df = df[df['y'].notna()]
