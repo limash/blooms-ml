@@ -147,6 +147,14 @@ def labeling_incremented(df_rho):
     return df_rho
 
 
+def labeling_binary_incremented(df_rho):
+    df_rho = df_rho.reset_index(drop=True)
+    df_rho["label"] = df_rho["P1_c"].shift(periods=-1)
+    df_rho = df_rho[df_rho["label"].notna()]
+    df_rho['label'] = np.where(df_rho['label'] > 0.33, 1, 0)
+    return df_rho
+
+
 def add_differences(df_rho):
     df_rho = df_rho.reset_index(drop=True)
     df_rho[["rho_diff", "P1_c_diff", "N1_p_diff", "N3_n_diff", "N5_s_diff"]] = (
@@ -377,29 +385,11 @@ def get_datasets_classification(datadir):
 
 @timeit
 def get_datasets_classification_stacked(datadir):
-    df = pd.read_parquet(os.path.join(datadir, "roho800_weekly_average.parquet"))
-    (p1_c_mean, n1_p_mean, n3_n_mean, n5_s_mean, p1_c_std, n1_p_std, n3_n_std, n5_s_std) = get_stats(
-        os.path.join(datadir, "cnps_mean_std.csv")
-    )
+    df = pd.read_parquet(os.path.join(datadir, "roho800_weekly_average_stacked.parquet"))
 
-    df["P1_c"] = ((df["P1_c"] - float(p1_c_mean)) / float(p1_c_std)).round(2).astype("float32")
-    df["N1_p"] = ((df["N1_p"] - float(n1_p_mean)) / float(n1_p_std)).round(2).astype("float32")
-    df["N3_n"] = ((df["N3_n"] - float(n3_n_mean)) / float(n3_n_std)).round(2).astype("float32")
-    df["N5_s"] = ((df["N5_s"] - float(n5_s_mean)) / float(n5_s_std)).round(2).astype("float32")
-    df["rho"] = ((df["rho"] - df["rho"].mean()) / df["rho"].std()).round(2).astype("float32")
-
-    df = df.groupby(["station", "s_rho"]).apply(add_differences, include_groups=False)
+    df = df.groupby(["station", "s_rho"]).apply(labeling_binary_incremented, include_groups=False)
     df = df.reset_index().drop(columns="level_2")
-
-    df = df.groupby(["station", "s_rho"]).apply(add_previous, include_groups=False)
-    df = df.reset_index().drop(columns="level_2")
-
-    df = df.groupby(["station", "s_rho"]).apply(labeling_incremented, include_groups=False)
-    df = df.reset_index().drop(columns="level_2")
-    df.rename(columns={"label": "y"}, inplace=True)
-    df = df[df["y"].notna()]
     df = df.drop(columns=["station", "s_rho"])
-    df["y"] = df["y"].clip(lower=-1, upper=1)
     # split
     df_train = df[df["ocean_time"] < "2013-01-01"]
     df_test = df[df["ocean_time"] > "2013-01-01"]
