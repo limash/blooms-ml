@@ -31,7 +31,7 @@ class TrainState(train_state.TrainState):
     key: jax.Array
 
 
-@partial(jax.jit, static_argnames=['num_classes'])
+@partial(jax.jit, static_argnames=["num_classes"])
 def apply_classification_model(state, observations, labels, num_classes):
     """Computes gradients, loss and accuracy for a single batch."""
 
@@ -48,34 +48,38 @@ def apply_classification_model(state, observations, labels, num_classes):
 
 
 def l2_loss(x, alpha):
-    return alpha * (x ** 2).mean()
+    return alpha * (x**2).mean()
 
 
-@partial(jax.jit, static_argnames=['loss_alpha'])
+@partial(jax.jit, static_argnames=["loss_alpha"])
 def regression_eval_loss(state, observations, y, loss_alpha=1e-3):
-    predictions = jnp.squeeze(state.apply_fn(
-        {"params": state.params}, 
-        x = observations,
-        training=False,
-        ))
+    predictions = jnp.squeeze(
+        state.apply_fn(
+            {"params": state.params},
+            x=observations,
+            training=False,
+        )
+    )
     loss = jnp.mean(optax.losses.l2_loss(predictions=predictions, targets=y))
     loss += sum(l2_loss(w, alpha=loss_alpha) for w in jax.tree_leaves(state.params))
     return loss
 
 
-@partial(jax.jit, static_argnames=['loss_alpha'])
+@partial(jax.jit, static_argnames=["loss_alpha"])
 def apply_regression_model(state, observations, y, loss_alpha=1e-3):
     """Computes gradients, loss and accuracy for a single batch."""
 
     dropout_train_key = jax.random.fold_in(key=state.key, data=state.step)
 
     def loss_fn(params):
-        predictions = jnp.squeeze(state.apply_fn(
-            {"params": params}, 
-            x = observations,
-            training=True,
-            rngs={'dropout': dropout_train_key},
-            ))
+        predictions = jnp.squeeze(
+            state.apply_fn(
+                {"params": params},
+                x=observations,
+                training=True,
+                rngs={"dropout": dropout_train_key},
+            )
+        )
         loss = jnp.mean(optax.losses.l2_loss(predictions=predictions, targets=y))
         loss += sum(l2_loss(w, alpha=loss_alpha) for w in jax.tree_leaves(params))
         return loss
@@ -123,7 +127,7 @@ class BinaryClassificator:
             batch_labels = train_ds["label"][perm, ...]
             grads, loss, accuracy = apply_classification_model(
                 state, batch_observations, batch_labels, BinaryClassificator.NUM_CLASSES
-                )
+            )
             state = update_model(state, grads)
             epoch_loss.append(loss)
             epoch_accuracy.append(accuracy)
@@ -143,13 +147,14 @@ class BinaryClassificator:
         epoch_loss = []
         epoch_accuracy = []
 
-        for i in tqdm.tqdm(range(0, len(test_ds["observations"]), batch_size),
-                           desc="Test batches", position=1, leave=False):
-            batch_observations = test_ds["observations"][i:i + batch_size, ...]
-            batch_labels = test_ds["label"][i:i + batch_size, ...]
+        for i in tqdm.tqdm(
+            range(0, len(test_ds["observations"]), batch_size), desc="Test batches", position=1, leave=False
+        ):
+            batch_observations = test_ds["observations"][i : i + batch_size, ...]
+            batch_labels = test_ds["label"][i : i + batch_size, ...]
             _, loss, accuracy = apply_classification_model(
                 state, batch_observations, batch_labels, BinaryClassificator.NUM_CLASSES
-                )
+            )
             epoch_loss.append(loss)
             epoch_accuracy.append(accuracy)
         test_loss = np.mean(epoch_loss)
@@ -162,7 +167,6 @@ class BinaryClassificator:
 
 @dataclass
 class Regressor:
-
     @staticmethod
     def train_epoch(state, train_ds, batch_size, rng):
         """
@@ -184,9 +188,7 @@ class Regressor:
         for perm in tqdm.tqdm(perms, desc="Train batches", position=1, leave=False):
             batch_observations = train_ds["observations"][perm, ...]
             batch_y = train_ds["y"][perm, ...]
-            grads, loss = apply_regression_model(
-                state, batch_observations, batch_y
-                )
+            grads, loss = apply_regression_model(state, batch_observations, batch_y)
             state = update_model(state, grads)
             epoch_loss.append(loss)
         train_loss = np.mean(epoch_loss)
@@ -202,13 +204,12 @@ class Regressor:
         """
         epoch_loss = []
 
-        for i in tqdm.tqdm(range(0, len(test_ds["observations"]), batch_size),
-                           desc="Test batches", position=1, leave=False):
-            batch_observations = test_ds["observations"][i:i + batch_size, ...]
-            batch_y = test_ds["y"][i:i + batch_size, ...]
-            loss = regression_eval_loss(
-                state, batch_observations, batch_y
-                )
+        for i in tqdm.tqdm(
+            range(0, len(test_ds["observations"]), batch_size), desc="Test batches", position=1, leave=False
+        ):
+            batch_observations = test_ds["observations"][i : i + batch_size, ...]
+            batch_y = test_ds["y"][i : i + batch_size, ...]
+            loss = regression_eval_loss(state, batch_observations, batch_y)
             epoch_loss.append(loss)
         test_loss = np.mean(epoch_loss)
         return {
@@ -223,15 +224,10 @@ def create_train_state(rng, config, obs_shape):
     # Remove 'time' dimension and add 'batch 1' instead
     params = model.init(init_rng, jnp.ones([1, *list(obs_shape[1:])]), training=False)["params"]
     tx = config.optimizer(**config.args_optimizer)
-    return TrainState.create(
-        apply_fn=model.apply, 
-        params=params, key=state_rng, tx=tx
-        )
+    return TrainState.create(apply_fn=model.apply, params=params, key=state_rng, tx=tx)
 
 
-def train_and_evaluate(config: ml_collections.ConfigDict,
-                       workdir: str,
-                       datadir: str):
+def train_and_evaluate(config: ml_collections.ConfigDict, workdir: str, datadir: str):
     """Execute model training and evaluation loop.
 
     Args:
@@ -251,7 +247,7 @@ def train_and_evaluate(config: ml_collections.ConfigDict,
     summary_writer.hparams(dict(config))
 
     rng, init_rng = jax.random.split(rng)
-    state = create_train_state(init_rng, config, train_ds['observations'].shape)
+    state = create_train_state(init_rng, config, train_ds["observations"].shape)
     trainer = config.trainer()
 
     for epoch in tqdm.tqdm(range(1, config.num_epochs + 1), desc="Epochs", position=0):

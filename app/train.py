@@ -27,25 +27,21 @@ def main():
         "--workdir",
         type=str,
         default=os.path.join(Path.home(), "blooms-ml_results/"),
-        help="Path to the tensorboard logs."
+        help="Path to the tensorboard logs.",
     )
     parser.add_argument(
-        "--datadir",
-        type=str,
-        default=os.path.join(Path.home(), "data_ROHO/"),
-        help="Path to the input data."
+        "--datadir", type=str, default=os.path.join(Path.home(), "data_ROHO/"), help="Path to the input data."
     )
     parser.add_argument("--num-epochs", default=10, type=int)
     parser.add_argument("--save-epochs", default=10, type=int)
     parser.add_argument("--batch-size", default=100000, type=int)
-    parser.add_argument("--config", required=True, type=str,
-                        choices=('classification', 'regression'))
+    parser.add_argument("--config", required=True, type=str, choices=("classification", "regression"))
 
     args = parser.parse_args()
 
-    if args.config == 'classification':
+    if args.config == "classification":
         config = configs.classification()
-    elif args.config == 'regression':
+    elif args.config == "regression":
         config = configs.regression()
 
     config.num_epochs = args.num_epochs
@@ -59,6 +55,7 @@ def main():
     datadir = args.datadir
 
     train_and_evaluate(config=config, workdir=workdir, datadir=datadir)
+
 
 if __name__ == "__main__":
     main()

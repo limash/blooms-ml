@@ -34,7 +34,7 @@ class MLPDropout(nn.Module):
     dropout_rate: float = 0.1
 
     @nn.compact
-    def __call__(self, x, *args, training:bool, **kwargs):
+    def __call__(self, x, *args, training: bool, **kwargs):
         for i, feat in enumerate(self.features):
             x = nn.Dense(feat, name=f"layers_{i}")(x)
             if i != len(self.features) - 1:
