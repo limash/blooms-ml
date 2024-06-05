@@ -16,7 +16,7 @@ import ml_collections
 import optax
 
 from blooms_ml.learning import BinaryClassificator, Regressor
-from blooms_ml.networks import MLPDropout
+from blooms_ml.networks import MLP, MLPDropout
 from blooms_ml.utils import (
     get_datasets_classification_stacked,
     get_datasets_regression,
@@ -29,9 +29,9 @@ def classification():
     config.get_datasets = get_datasets_classification_stacked
     config.trainer = BinaryClassificator
 
-    config.network = MLPDropout
+    config.network = MLP
     config.args_network = ml_collections.ConfigDict()
-    config.args_network.features = [40, 30, 40, 2]
+    config.args_network.features = [70, 40, 70, 2]
 
     config.optimizer = optax.adam
     config.args_optimizer = ml_collections.ConfigDict()

@@ -111,9 +111,16 @@ class BinaryClassificator:
             state: updated flax.training.train_state
             info: dict with auxiliary information
         """
+
+        labels, observations = train_ds["label"], train_ds["observations"]
+        coordinates_ones = np.where(labels == 1)[0]
+        coordinates_zeros = np.where(labels != 1)[0]
+        random_zeros = np.random.choice(coordinates_zeros, len(coordinates_ones), replace=False)
+        merged_coordinates = np.concatenate((random_zeros, coordinates_ones))
+        train_ds["label"], train_ds["observations"] = labels[merged_coordinates], observations[merged_coordinates]
+
         train_ds_size = len(train_ds["observations"])
         steps_per_epoch = train_ds_size // batch_size
-
         # this is fast on gpu and slow on cpu
         perms = jax.random.permutation(rng, len(train_ds["observations"]))
         perms = perms[: steps_per_epoch * batch_size]  # skip incomplete batch

@@ -24,7 +24,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import xarray as xr
-from jax import numpy as jnp
 
 VARS = [
     "ocean_time",
@@ -151,7 +150,7 @@ def labeling_binary_incremented(df_rho):
     df_rho = df_rho.reset_index(drop=True)
     df_rho["label"] = df_rho["P1_c"].shift(periods=-1)
     df_rho = df_rho[df_rho["label"].notna()]
-    df_rho['label'] = np.where(df_rho['label'] > 0.33, 1, 0)
+    df_rho["label"] = np.where(df_rho["label"] > 0.1, 1, 0)
     return df_rho
 
 
@@ -374,11 +373,11 @@ def get_datasets_classification(datadir):
     del df
     train_data = {
         "label": df_train["label"].values,
-        "observations": jnp.float32(df_train.drop(columns=["ocean_time", "label", "P1_c"]).values),
+        "observations": df_train.drop(columns=["ocean_time", "label", "P1_c"]).values,
     }
     test_data = {
         "label": df_test["label"].values,
-        "observations": jnp.float32(df_test.drop(columns=["ocean_time", "label", "P1_c"]).values),
+        "observations": df_test.drop(columns=["ocean_time", "label", "P1_c"]).values,
     }
     return train_data, test_data
 
@@ -390,17 +389,17 @@ def get_datasets_classification_stacked(datadir):
     df = df.groupby(["station", "s_rho"]).apply(labeling_binary_incremented, include_groups=False)
     df = df.reset_index().drop(columns="level_2")
     df = df.drop(columns=["station", "s_rho"])
-    # split
+
     df_train = df[df["ocean_time"] < "2013-01-01"]
     df_test = df[df["ocean_time"] > "2013-01-01"]
     del df
     train_data = {
-        "y": df_train["y"].values,
-        "observations": jnp.float32(df_train.drop(columns=["ocean_time", "y"]).values),
+        "label": df_train["label"].values,
+        "observations": df_train.drop(columns=["ocean_time", "label"]).values,
     }
     test_data = {
-        "y": df_test["y"].values,
-        "observations": jnp.float32(df_test.drop(columns=["ocean_time", "y"]).values),
+        "label": df_test["label"].values,
+        "observations": df_test.drop(columns=["ocean_time", "label"]).values,
     }
     return train_data, test_data
 
@@ -421,10 +420,10 @@ def get_datasets_regression(datadir):
     del df
     train_data = {
         "y": df_train["y"].values,
-        "observations": jnp.float32(df_train.drop(columns=["ocean_time", "y"]).values),
+        "observations": df_train.drop(columns=["ocean_time", "y"]).values,
     }
     test_data = {
         "y": df_test["y"].values,
-        "observations": jnp.float32(df_test.drop(columns=["ocean_time", "y"]).values),
+        "observations": df_test.drop(columns=["ocean_time", "y"]).values,
     }
     return train_data, test_data
