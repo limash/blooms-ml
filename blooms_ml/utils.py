@@ -150,7 +150,7 @@ def labeling_binary_incremented(df_rho):
     df_rho = df_rho.reset_index(drop=True)
     df_rho["label"] = df_rho["P1_c"].shift(periods=-1)
     df_rho = df_rho[df_rho["label"].notna()]
-    df_rho["label"] = np.where(df_rho["label"] > 0.1, 1, 0)
+    df_rho["label"] = np.where(df_rho["label"] > 0.2, 1, 0)
     return df_rho
 
 
