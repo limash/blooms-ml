@@ -125,12 +125,12 @@ def main():
         client = Client(cluster)  # noqa: F841
     if args.mode == "s":
         files = sorted(
-            glob.glob(f"{Path.home()}/fram_shmiak/ROHO800_hindcast_2007_2019_v2bu/roho800_v2bu_avg/*avg*.nc")
+            glob.glob(f"{Path.home()}/fram/ROHO800_hindcast_2007_2019_v2bu/roho800_v2bu_avg/*avg*.nc")
         )
         prepare_cnps_mean_std(files)
     elif args.mode == "p":
         files = sorted(
-            glob.glob(f"{Path.home()}/fram_shmiak/ROHO800_hindcast_2007_2019_v2bu/roho800_v2bu_avg/*avg*.nc")
+            glob.glob(f"{Path.home()}/fram/ROHO800_hindcast_2007_2019_v2bu/roho800_v2bu_avg/*avg*.nc")
         )
         prepare_files(files)
     elif args.mode == "m":

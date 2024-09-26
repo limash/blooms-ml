@@ -137,7 +137,7 @@ def merge_edges_to_centers(ds: xr.Dataset):
 def labeling(df_rho):
     df_rho = df_rho.reset_index(drop=True)
     df_rho["label"] = -1 * df_rho["P1_c"].diff(periods=-1)
-    return df_rho
+    return df_rho[:-1]
 
 
 def labeling_incremented(df_rho):
@@ -211,7 +211,6 @@ def get_rho_profiles(df_station, nlayers: int = 25):
     rho = df_station.pivot(index="ocean_time", columns="s_rho", values="rho")
     new_columns = [str(i) for i in range(1, len(rho.columns) + 1)]
     rho.rename(columns=dict(zip(rho.columns[:], new_columns)), inplace=True)
-    rho = rho.apply(normalize_series, axis=1)
     rho = rho.loc[rho.index.repeat(nlayers)]
     rho = rho.rename_axis(None, axis=1)
     return rho
