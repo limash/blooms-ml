@@ -136,7 +136,8 @@ def merge_edges_to_centers(ds: xr.Dataset):
 
 def labeling(df_rho):
     df_rho = df_rho.reset_index(drop=True)
-    df_rho["label"] = -1 * df_rho["P1_c"].diff(periods=-1)
+    df_rho["label"] = -1 * normalize_series(df_rho["P1_c"]).diff(periods=-1)
+    df_rho["label"] = np.where(df_rho["label"] > 0.2, 1, 0)
     return df_rho[:-1]
 
 
@@ -183,6 +184,10 @@ def add_previous(df_rho):
 def normalize_series(row: pd.Series):
     return ((row - row.mean()) / row.std()).round(2).astype("float32")
 
+
+def normalize_df(df, columns_slice):
+    df.iloc[:, columns_slice] = df.iloc[:, columns_slice].apply(normalize_series, axis=0)
+    return df
 
 def append_rho_profiles_and_labels(df_station, nlayers: int = 25):
     # add rho profiles
