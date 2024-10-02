@@ -23,7 +23,7 @@ from blooms_ml.utils import (
 )
 
 
-def classification():
+def classification_model():
     config = ml_collections.ConfigDict()
 
     config.get_datasets = get_datasets_classification_stacked
@@ -40,7 +40,7 @@ def classification():
     return config
 
 
-def regression():
+def regression_model():
     config = ml_collections.ConfigDict()
 
     config.get_datasets = get_datasets_regression

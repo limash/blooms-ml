@@ -1,9 +1,10 @@
 from datetime import timedelta
-from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
+from blooms_ml.utils import normalize_rows, normalize_series
 
 
 def keep_time_integrity(df):
@@ -17,24 +18,23 @@ def keep_time_integrity(df):
     return filtered_df
 
 
-def standardize_series(series, target_length=64):
+def standardize_series(series, target_length=30):
     """
-    Parameters:
+    Args:
     series (pd.Series): The input Series to interpolate.
     target_length (int): The desired length after interpolation.
-    
+
     Returns:
     pd.Series: The standardized Series with the target length.
     """
     original_indices = np.linspace(0, len(series) - 1, num=len(series))
     target_indices = np.linspace(0, len(series) - 1, num=target_length)
     interpolated_values = np.interp(target_indices, original_indices, series)
-    standardized_values = (interpolated_values - np.mean(interpolated_values)) / np.std(interpolated_values)
-    
-    return pd.Series(standardized_values)
 
-def get_dataframe_ferrybox2002to2018():
-    datadir = f"{Path.home()}/data_ferrybox"
+    return pd.Series(interpolated_values)
+
+
+def get_ferrytracks(datadir):
     df = pd.read_csv(f"{datadir}/ferrybox_colorline_2002-2018.csv", dtype={"Northbound": "str"})
     df["Time"] = pd.to_datetime(df["Time"])
     df = df.iloc[:, :6]
@@ -50,12 +50,20 @@ def get_dataframe_ferrybox2002to2018():
     dfs = [keep_time_integrity(df) for df in dfs]
     # a snippet should cover most of the oslo fjord
     dfs = [df for df in dfs if df["LAT"].iloc[0] < 59.6 and df["LAT"].iloc[-1] > 59.8]
+    return dfs
+
+
+def get_dataframe_ferrybox2002to2018(dfs: list[pd.DataFrame]):
+    """
+    Args:
+        dfs - a list of ferrytracks
+    """
     temp_standardized = [standardize_series(df["TEMP.IN"]) for df in dfs]
     salt_standardized = [standardize_series(df["SAL"]) for df in dfs]
     df_temp = pd.DataFrame([s.values for s in temp_standardized])
     df_salt = pd.DataFrame([s.values for s in salt_standardized])
-    df_temp.columns = ['temp_' + str(i) for i in df_temp.columns]
-    df_salt.columns = ['salt_' + str(i) for i in df_salt.columns]
+    df_temp.columns = ["temp_" + str(i) for i in df_temp.columns]
+    df_salt.columns = ["salt_" + str(i) for i in df_salt.columns]
     times = [df["Time"].iloc[0] for df in dfs]
     flues = [df["FLU.FIELDCAL"].mean() for df in dfs]
     # labeling
@@ -68,6 +76,7 @@ def get_dataframe_ferrybox2002to2018():
         else:
             labels.append(0)
         prev_fluo, prev_time = fluo, time
+
     df_labels = pd.DataFrame(
         {
             "timestamps": times,
@@ -75,8 +84,18 @@ def get_dataframe_ferrybox2002to2018():
             "labels": labels,
         }
     )
-    df_labels = pd.concat([df_labels, df_temp, df_salt], axis=1)
-    return dfs, df_labels
+    df_temp = normalize_rows(df_temp)
+    df_salt = normalize_rows(df_salt)
+    df_labels["timestamps_diff"] = df_labels["timestamps"].diff(periods=1).dt.total_seconds()
+    df_labels["timestamps_diff"] = normalize_series(df_labels["timestamps_diff"])
+    df = pd.concat([df_labels, df_temp, df_salt], axis=1)
+    return df
+
+
+def get_datasets_ferrybox2002to2018(datadir):
+    dfs = get_ferrytracks(datadir)
+    df = get_dataframe_ferrybox2002to2018(dfs)
+    return df
 
 
 def plot_temp_salt_flu(df):

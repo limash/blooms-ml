@@ -185,9 +185,14 @@ def normalize_series(row: pd.Series):
     return ((row - row.mean()) / row.std()).round(2).astype("float32")
 
 
-def normalize_df(df, columns_slice):
+def normalize_columns(df, columns_slice):
     df.iloc[:, columns_slice] = df.iloc[:, columns_slice].apply(normalize_series, axis=0)
     return df
+
+
+def normalize_rows(df):
+    return df.apply(normalize_series, axis=1)
+
 
 def append_rho_profiles_and_labels(df_station, nlayers: int = 25):
     # add rho profiles

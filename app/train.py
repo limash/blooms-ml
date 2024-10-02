@@ -40,9 +40,9 @@ def main():
     args = parser.parse_args()
 
     if args.config == "classification":
-        config = configs.classification()
+        config = configs.classification_model()
     elif args.config == "regression":
-        config = configs.regression()
+        config = configs.regression_model()
 
     config.num_epochs = args.num_epochs
     config.save_epochs = args.save_epochs
