@@ -35,13 +35,21 @@ def main():
     parser.add_argument("--num-epochs", default=10, type=int)
     parser.add_argument("--save-epochs", default=10, type=int)
     parser.add_argument("--batch-size", default=100000, type=int)
-    parser.add_argument("--config", required=True, type=str, choices=("classification", "regression"))
+    parser.add_argument(
+        "--config",
+        required=True,
+        type=str,
+        choices=("cm", "cf", "rm"),
+        help="Options are cm, cf, rm; which means classification model, classification ferrybox, regression model.",
+    )
 
     args = parser.parse_args()
 
-    if args.config == "classification":
+    if args.config == "cm":
         config = configs.classification_model()
-    elif args.config == "regression":
+    elif args.config == "cf":
+        config = configs.classification_ferrybox()
+    elif args.config == "rm":
         config = configs.regression_model()
 
     config.num_epochs = args.num_epochs

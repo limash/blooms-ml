@@ -21,6 +21,24 @@ from blooms_ml.utils import (
     get_datasets_classification_stacked,
     get_datasets_regression,
 )
+from blooms_ml.utils_ferrybox import get_datasets_ferrybox2002to2018
+
+
+def classification_ferrybox():
+    config = ml_collections.ConfigDict()
+
+    config.get_datasets = get_datasets_ferrybox2002to2018
+    config.trainer = BinaryClassificator
+
+    config.network = MLP
+    config.args_network = ml_collections.ConfigDict()
+    config.args_network.features = [50, 20, 50, 2]
+
+    config.optimizer = optax.adam
+    config.args_optimizer = ml_collections.ConfigDict()
+    config.args_optimizer.learning_rate = 1e-3
+
+    return config
 
 
 def classification_model():
