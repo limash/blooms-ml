@@ -4,7 +4,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from blooms_ml.utils import normalize_rows, normalize_series
+from blooms_ml.utils import normalize_rows, timeit
+
+VARIABLES = [*["timestamps"], *[f"temp_{i}" for i in range(30)], *[f"salt_{i}" for i in range(30)]]
 
 
 def keep_time_integrity(df):
@@ -53,10 +55,11 @@ def get_ferrytracks(datadir):
     return dfs
 
 
-def get_dataframe_ferrybox2002to2018(dfs: list[pd.DataFrame]):
+def get_dataframe_ferrybox2002to2018(dfs: list[pd.DataFrame], normalize=True):
     """
     Args:
         dfs - a list of ferrytracks
+        normalize - normalize temperature and salinity tracks
     """
     temp_standardized = [standardize_series(df["TEMP.IN"]) for df in dfs]
     salt_standardized = [standardize_series(df["SAL"]) for df in dfs]
@@ -84,18 +87,57 @@ def get_dataframe_ferrybox2002to2018(dfs: list[pd.DataFrame]):
             "labels": labels,
         }
     )
-    df_temp = normalize_rows(df_temp)
-    df_salt = normalize_rows(df_salt)
-    df_labels["timestamps_diff"] = df_labels["timestamps"].diff(periods=1).dt.total_seconds()
-    df_labels["timestamps_diff"] = normalize_series(df_labels["timestamps_diff"])
+    if normalize:
+        df_temp = normalize_rows(df_temp)
+        df_salt = normalize_rows(df_salt)
     df = pd.concat([df_labels, df_temp, df_salt], axis=1)
     return df
 
 
+def add_previous(df):
+    df = df.reset_index(drop=True)
+    df_diff1 = df[VARIABLES].shift()
+    df_diff1 = df_diff1.rename(columns=lambda x: x + "_shift1")
+    df_diff2 = df[VARIABLES].shift(2)
+    df_diff2 = df_diff2.rename(columns=lambda x: x + "_shift2")
+    df = pd.concat([df, df_diff1, df_diff2], axis=1)
+    df["timestamps_diff"] = df["timestamps"] - df["timestamps_shift2"]
+    df = df[2:].reset_index(drop=True)
+    df = df[df["timestamps_diff"] < pd.Timedelta(days=7)]
+    df = df.drop(columns=["timestamps_shift1", "timestamps_shift2", "timestamps_diff"])
+    return df.reset_index(drop=True)
+
+
+def to_differences(df):
+    df = df.reset_index(drop=True)
+    df_diff1 = (df[VARIABLES].diff(periods=1))[2:]
+    df_diff1 = df_diff1.rename(columns=lambda x: x + "_diff1")
+    df_diff2 = (df[VARIABLES].diff(periods=2))[2:]
+    df_diff2 = df_diff2.rename(columns=lambda x: x + "_diff2")
+    df_diff = pd.concat([df_diff1, df_diff2], axis=1)
+    df_diff[["timestamps", "labels"]] = df[["timestamps", "labels"]]
+    df_diff = df_diff[df_diff["timestamps_diff2"] < pd.Timedelta(days=7)]
+    df_diff = df_diff.drop(columns=["timestamps_diff1", "timestamps_diff2", "timestamps"])
+    return df_diff
+
+
+@timeit
 def get_datasets_ferrybox2002to2018(datadir):
     dfs = get_ferrytracks(datadir)
     df = get_dataframe_ferrybox2002to2018(dfs)
-    return df
+    df_stacked = add_previous(df)
+    # split
+    df_train = df_stacked[df_stacked["timestamps"] < "2015-01-01"]
+    df_test = df_stacked[df_stacked["timestamps"] > "2015-01-01"]
+    train_data = {
+        "label": df_train["labels"].values,
+        "observations": df_train.drop(columns=["timestamps", "fluorescence", "labels"]).values,
+    }
+    test_data = {
+        "label": df_test["labels"].values,
+        "observations": df_test.drop(columns=["timestamps", "fluorescence", "labels"]).values,
+    }
+    return train_data, test_data
 
 
 def plot_temp_salt_flu(df):
