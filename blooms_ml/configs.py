@@ -32,7 +32,7 @@ def classification_ferrybox():
 
     config.network = MLP
     config.args_network = ml_collections.ConfigDict()
-    config.args_network.features = [50, 20, 50, 2]
+    config.args_network.features = [13, 7, 13, 2]
 
     config.optimizer = optax.adam
     config.args_optimizer = ml_collections.ConfigDict()
