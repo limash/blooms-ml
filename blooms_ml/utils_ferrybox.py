@@ -4,9 +4,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from blooms_ml.utils import normalize_rows, timeit
+from blooms_ml.utils import normalize_columns, normalize_rows, timeit
 
-VARIABLES = [*["timestamps"], *[f"temp_{i}" for i in range(30)], *[f"salt_{i}" for i in range(30)]]
+VARIABLES = [
+    *["timestamps"],
+    *["Mjøndalen_bru", "Solbergfoss", "Bjørnegårdssvingen"],
+    *[f"temp_{i}" for i in range(30)],
+    *[f"salt_{i}" for i in range(30)],
+]
 
 
 def keep_time_integrity(df):
@@ -37,7 +42,7 @@ def standardize_series(series, target_length=30):
 
 
 def get_ferrytracks(datadir):
-    df = pd.read_csv(f"{datadir}/ferrybox_colorline_2002-2018.csv", dtype={"Northbound": "str"})
+    df = pd.read_csv(f"{datadir}/data_ferrybox/ferrybox_colorline_2002-2018.csv", dtype={"Northbound": "str"})
     df["Time"] = pd.to_datetime(df["Time"])
     df = df.iloc[:, :6]
     df = df.dropna()
@@ -53,6 +58,13 @@ def get_ferrytracks(datadir):
     # a snippet should cover most of the oslo fjord
     dfs = [df for df in dfs if df["LAT"].iloc[0] < 59.6 and df["LAT"].iloc[-1] > 59.8]
     return dfs
+
+
+def get_rivers(datadir):
+    df_rivers = pd.read_csv(f"{datadir}/data_rivers/rivers_2002-2018.csv")
+    df_rivers.rename(columns={"time": "timestamps"}, inplace=True)
+    df_rivers["timestamps"] = pd.to_datetime(df_rivers["timestamps"])
+    return df_rivers
 
 
 def get_dataframe_ferrybox2002to2018(dfs: list[pd.DataFrame], normalize=True):
@@ -125,8 +137,12 @@ def to_differences(df):
 @timeit
 def get_datasets_ferrybox2002to2018(datadir):
     dfs = get_ferrytracks(datadir)
-    df = get_dataframe_ferrybox2002to2018(dfs)
-    df_stacked = add_previous(df)
+    df = get_dataframe_ferrybox2002to2018(dfs, normalize=False)
+    df_rivers = get_rivers(datadir)
+    df_merged = pd.merge_asof(df, df_rivers, on="timestamps", direction="forward")
+    df_merged = df_merged.dropna().reset_index(drop=True)
+    df_merged = normalize_columns(df_merged, slice(3, None))
+    df_stacked = add_previous(df_merged)
     # split
     df_train = df_stacked[df_stacked["timestamps"] < "2015-01-01"]
     df_test = df_stacked[df_stacked["timestamps"] > "2015-01-01"]

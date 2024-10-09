@@ -30,7 +30,7 @@ def main():
         help="Path to the tensorboard logs.",
     )
     parser.add_argument(
-        "--datadir", type=str, default=os.path.join(Path.home(), "data_ROHO/"), help="Path to the input data."
+        "--datadir", type=str, default=os.path.join(Path.home(), "blooms-ml_data/"), help="Path to the input data."
     )
     parser.add_argument("--num-epochs", default=10, type=int)
     parser.add_argument("--save-epochs", default=10, type=int)
