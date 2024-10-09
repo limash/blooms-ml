@@ -74,12 +74,13 @@ def get_dataframe_ferrybox2002to2018(dfs: list[pd.DataFrame], normalize=True):
     prev_time, prev_fluo = times[0], flues[0]
     labels = []
     for time, fluo in zip(times, flues):
-        if fluo > 1 and fluo > 1.5 * prev_fluo and (time - prev_time) < three_days:
+        if fluo > 3 and fluo > 1.1 * prev_fluo and (time - prev_time) < three_days:
             labels.append(1)
         else:
             labels.append(0)
         prev_fluo, prev_time = fluo, time
-
+    # shift labels
+    labels = labels[1:] + [0]
     df_labels = pd.DataFrame(
         {
             "timestamps": times,
