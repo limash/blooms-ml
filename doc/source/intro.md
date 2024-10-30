@@ -1,10 +1,9 @@
-# Algal bloom prediction
+# Algal blooms prediction
 
 Code: [https://github.com/limash/blooms-ml](https://github.com/limash/blooms-ml)
 
-The main goal of the project is to evaluate the possibility of predicting algal bloom using machine learning (ML) methods.
-
-Predicting algal blooms is interesting in the context of the following task of predicting harmful algal blooms (HABs).
+The main goal of the project is to evaluate the possibility of predicting algal blooms using machine learning (ML) methods.
+This is interesting in the context of the following task of predicting harmful algal blooms (HABs).
 Predicting algal blooms is difficult because they occur only a few times a year (we are usually interested in predicting when a bloom will start), and it can be a geographically dependent task.
 These factors limit the amount of training data we need in traditional ML methods.
 
