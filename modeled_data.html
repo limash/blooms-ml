@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Modeled data &#8212; Blooms-ML 0.1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=686e5160" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <script src="_static/documentation_options.js?v=2709fde1"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Ferrybox data" href="ferrybox_data.html" />
+    <link rel="prev" title="Algal blooms prediction" href="intro.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="modeled-data">
+<h1>Modeled data<a class="headerlink" href="#modeled-data" title="Link to this heading">¶</a></h1>
+<p>The idea is to take the modeled data and train a machine learning (ML) model on that data, then use it on the observational data.
+The reason - hydro-physical-biogeochemical models can’t predict the exact time and location of algal blooms very well, but they do reproduce the physics/biogeochemistry of it.
+Thus, the intuition to test is whether an ML model trained on modeled data can predict blooms on observational data.
+We train a neural network model to distinguish bloom events (label = 1) from all other conditions (label = 0).</p>
+<section id="input-data">
+<h2>Input data<a class="headerlink" href="#input-data" title="Link to this heading">¶</a></h2>
+<p>We use the modeled data, which comes from the ROMS+NERSEM hydro-physical-biogeochemical model of the Hardangerfjord system (the western Norway around Bergen) and has weekly averages of plenty of seawater parameters.
+Input to the neural network model includes modeled nutrients (PO<sub>4</sub>, NO<sub>3</sub>, Si) and density profiles at various ROMS nodal points.
+We do not take more parameters to be closer to real observations that we can get from existing monitoring programs.
+The data span from 2007 to 2014.</p>
+</section>
+<section id="labeling">
+<h2>Labeling<a class="headerlink" href="#labeling" title="Link to this heading">¶</a></h2>
+<p>Labeling is based on future increases in diatoms carbon concentration.
+Label is 1 if ‘normalized next week carbon’ - ‘normalized current week carbon’ &gt; 0.2.
+All other points are label = 0.</p>
+<p>Example of input data and labels (before normalization):
+<img alt="modeled_data" src="_images/modeled_data.png" />
+For predictitons we use:
+<code class="docutils literal notranslate"><span class="pre">N1_p</span></code> is PO<sub>4</sub>,
+<code class="docutils literal notranslate"><span class="pre">N3_n</span></code> is NO<sub>3</sub>,
+<code class="docutils literal notranslate"><span class="pre">N5_s</span></code> is Si
+and density profiles (1 to 25 columns).</p>
+<p>Labeling example, Diatoms Carbon concentration (mg/l) from a ROMS nodal point (station) during a modeled year:
+<img alt="modeled_data_station" src="_images/modeled_station_labeling.png" />
+Red dots - label = 1 (bloom is expected at the next time step).</p>
+<p><strong>NOTICE</strong>: the real task is to predict the point of the first bloom accurance.
+Unfortunately, if we label the data in this way, we will have too few points labeled as ‘bloom’.
+And after data balancing, there will be almost no data left.</p>
+</section>
+<section id="results">
+<h2>Results<a class="headerlink" href="#results" title="Link to this heading">¶</a></h2>
+<p>For principal component analysis and a decision tree classifier, we preprocess the modeled data as follows.
+Instead of snapshots, we use increments of variables for 1 and 2 consecutive periods.
+For example, for N5_s (Si), there are 2 data points on 2007-02-01:</p>
+<ol class="arabic simple">
+<li><p>a difference between 2007-01-18 and 2007-02-01;</p></li>
+<li><p>a difference between 2007-01-25 and 2007-02-01.</p></li>
+</ol>
+<p>Then we normalize all the data by column (time).
+Thus, each input data record / vector has 56 points / dimensions (2 x (PO<sub>4</sub> + NO<sub>3</sub> + Si + 25 density points)).</p>
+<p>All data are balanced (equal number of points with label=0 and label=1).
+The data used for training and testing are separated temporaly.
+This is the best approach for autocorrelated (correlation over time) data.
+For testing, we use all data after 2013.</p>
+<section id="principal-component-analysis-pca">
+<h3>Principal Component Analysis (PCA)<a class="headerlink" href="#principal-component-analysis-pca" title="Link to this heading">¶</a></h3>
+<p>PCA is a dimensionality reduction algorithm and it can help to understand / visualize the data structure.
+We project the observation vectors (of 56 dimensions) to 3 dimensions and visualize them.
+We also add bloom and no bloom tags to the vectors.</p>
+<p><img alt="modeled_pcs" src="_images/modeled_pca.png" /></p>
+<p>In the resulting subspace, blooms and no blooms are not linearly separable.
+But there are some ‘patches’ of bloom and no bloom vectors.
+This means that the distances between vectors in blooms / no blooms groups are smaller and groups can be separated in higher dimensional space.</p>
+</section>
+<section id="decision-tree-classifier">
+<h3>Decision Tree classifier<a class="headerlink" href="#decision-tree-classifier" title="Link to this heading">¶</a></h3>
+<p>Decision Trees is a powerful ‘classical’ ML method that is less prone to ‘overfitting’ compared to ‘deep ML’ methods.
+This type of algorithm is popular for classification tasks.</p>
+<p><img alt="confusion_matrix" src="_images/modeled_confusion_matrix.png" /></p>
+<p>The confusion matrix shows that a decision tree classifier can handle a task.
+Wrong predictions are balanced.
+There are about the same number of false positives and true negatives.</p>
+<p>True labels:
+<img alt="true_labels" src="_images/modeled_true_labels.png" /></p>
+<p>Predictions:
+<img alt="predictions" src="_images/modeled_predictions.png" /></p>
+<p>The accuracy of the decision tree classifier is about 60%, but the visual inspection of several stations shows that the actual task of predicting the first bloom accuracy is quite poor.</p>
+</section>
+<section id="deep-learning">
+<h3>Deep Learning<a class="headerlink" href="#deep-learning" title="Link to this heading">¶</a></h3>
+<p>We train a deep neural network to predict bloom and no bloom classes.
+To avoid overfitting, we use a small dense neural network with [70, 40, 70, 2] features.</p>
+<p>We experimented with taking 1 time point and several of them (e.g. 3 points covering 3 weeks).
+We also experimented with using increments of parameters instead of their values.
+Using more time points is beneficial, and using increments instead of snapshot values slightly decreases performance (on the training set) but reduces overfitting (increases performance on the test set).</p>
+<p>These are predictions for a ROMs nodal point from the test set:
+<img alt="predictions_neural_net" src="_images/modeled_nn.png" /></p>
+<p>Blue line is carbon concentration (mg/l).
+Red triangles - are label=1.
+After them carbon concentration increases more or less significantly.
+Cyan triangles - predictions of label=1.</p>
+<p>The overall accuracy on the test set is about 60% with quite a lot of false positives.
+But in general the neural net based classifier does the actual task of predicting first bloom better than the decision tree classifier.</p>
+</section>
+</section>
+<section id="conclusions">
+<h2>Conclusions<a class="headerlink" href="#conclusions" title="Link to this heading">¶</a></h2>
+<p>Both the decision tree classifier and the neural network classifier that we trained on the modeled data can predict blooms.
+The accuracy on the balanced dataset (same amount of bloom and no bloom points, for the original dataset with many more no bloom points the accuracy may be better) is about 60-70%.
+We believe that it is possible to improve the prediction accuracy significantly.
+However, in order to continue working on this, it is necessary to test the algorithms on the observational data to be sure that they actually work properly.
+Unfortunately, we haven’t been able to get the observational data in a form similar to the modeled data (temperature and salinity profiles to calculate a density profile, and the corresponding nutrients at the surface).</p>
+<p>During the project, we had difficulty retrieving data from the NIVA resources.
+We weren’t able to retrieve nutrients, temperature and salinity profile observations as a time series.
+First, the data is scattered through different databases and private sources.
+Then, similar variables have different names even within one data source, units of similar variables are also often different, making them uncomparable.
+To make the data usable, it is important to share the data and follow the standards.</p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">Blooms-ML</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="intro.html">Algal blooms prediction</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Modeled data</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#input-data">Input data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#labeling">Labeling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#results">Results</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#conclusions">Conclusions</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ferrybox_data.html">Ferrybox data</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="intro.html" title="previous chapter">Algal blooms prediction</a></li>
+      <li>Next: <a href="ferrybox_data.html" title="next chapter">Ferrybox data</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2024, Shamil Iakubov.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.1.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/modeled_data.md.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

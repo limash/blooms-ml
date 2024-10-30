@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Ferrybox data &#8212; Blooms-ML 0.1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=686e5160" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <script src="_static/documentation_options.js?v=2709fde1"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Modeled data" href="modeled_data.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="ferrybox-data">
+<h1>Ferrybox data<a class="headerlink" href="#ferrybox-data" title="Link to this heading">¶</a></h1>
+<p>We also train ML models on data from the NIVA ferrybox observation programs.
+These programs provide surface measurements of several seawater parameters following the tracks of some ships, e.g. Oslo-Kiel, Tromso-Longyearbean, etc.</p>
+<section id="input-data">
+<h2>Input data<a class="headerlink" href="#input-data" title="Link to this heading">¶</a></h2>
+<p>For this project, we extract temperature, salinity, and fluorescence snippets from a Color Fantasy cruise ship ferrybox track (Oslo-Kiel) records.
+We use surface measurements from latitude 59.7 northwards until Color Fantasy docks in Oslo.
+Then we interpolate / extrapolate the snippets to the same length (30 points).</p>
+<p>An example track snippet:
+<img alt="fb_track" src="_images/fb_track.png" /></p>
+<p>We also use the river discharge data from 3 observation stations around Oslo: Solbergfoss (Glomma), Mjøndalen bru (Drammen), and Bjørnegårdssvingen (inner Oslo fjord).</p>
+<p>Input data example before normalization:
+<img alt="fb_data" src="_images/fb_data.png" /></p>
+<p>For training, we use temperature and salinity values (surface horizontal profiles, 30 points each) and discharge values from 3 rivers.</p>
+</section>
+<section id="labeling">
+<h2>Labeling<a class="headerlink" href="#labeling" title="Link to this heading">¶</a></h2>
+<p>First, we calculate the average fluorescence values in the snippets.
+Lets call them <code class="docutils literal notranslate"><span class="pre">fluo</span></code>.
+Then we label a snippet 1 (bloom) if the next timestamp (should be in less than three days) <code class="docutils literal notranslate"><span class="pre">fluo</span></code> &gt; 3 and its greater than the current <code class="docutils literal notranslate"><span class="pre">fluo</span></code>.</p>
+</section>
+<section id="results">
+<h2>Results<a class="headerlink" href="#results" title="Link to this heading">¶</a></h2>
+<p>Similar to the modeled data, for principal component analysis and decision tree classifier training, we use increments of variables for 1 and 2 consecutive periods instead of snapshots.
+For deep learning classification, we use 3 consecutive snapshots as input data for a training point.
+We normalize all data columnwise (through time).</p>
+<p>All data are balanced (equal number of points with label=0 and label=1).
+The data used for training and testing are separated in time.
+For testing, we use all data after 2015.</p>
+<section id="principal-component-analysis-pca-and-decision-tree-classifier">
+<h3>Principal Component Analysis (PCA) and Decision Tree Classifier<a class="headerlink" href="#principal-component-analysis-pca-and-decision-tree-classifier" title="Link to this heading">¶</a></h3>
+<p><img alt="fb_pca" src="_images/fb_pca.png" /></p>
+<p>The PCA on the ferrybox data shows that the projected data is evenly distributed between ‘bloom’ and ‘no bloom’.
+This means that the current data vectors cannot be separated between ‘bloom’ and ‘no bloom’ very well.
+The decision tree classifier we trained on the data couldn’t achieve more than 50% accuracy, which is no better than a random classifier.</p>
+</section>
+<section id="deep-learning-classification">
+<h3>Deep Learning Classification<a class="headerlink" href="#deep-learning-classification" title="Link to this heading">¶</a></h3>
+<p>A deep learning classifier performs better than a random or decision tree classifier.
+To avoid overfitting, we use a small network with [13, 7, 13, 2] features.
+We also trained the network for only 10 epochs (1 epoch is training with all data in a dataset).</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-center"><p>Train dataset</p></th>
+<th class="head text-center"><p>Test dataset</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-center"><p><img alt="train_loss" src="_images/fb_train_loss.png" /></p></td>
+<td class="text-center"><p><img alt="test_loss" src="_images/fb_test_loss.png" /></p></td>
+</tr>
+<tr class="row-odd"><td class="text-center"><p><img alt="train_accuracy" src="_images/fb_train_accuracy.png" /></p></td>
+<td class="text-center"><p><img alt="test_accuracy" src="_images/fb_test_accuracy.png" /></p></td>
+</tr>
+</tbody>
+</table>
+<p>Test loss and accuracy improve over time, so the classifier learns to distinguish ‘bloom’ from ‘no bloom’.</p>
+<p>A test year predictions, red triangles - labels 1 (bloom):
+<img alt="fb_test_predictions" src="_images/fb_test2015predictions.png" /></p>
+<p>Predictions are close to label=1 points, but do not match too often.
+There are many false positives.
+Most of the accuracy comes from predicting ‘no bloom’ points.
+In 2015 there is actually only 1 big bloom (in fall) and therefore only 1 point we are really interested in predicting.
+(A spring bloom was apparently missed due to missing observations).
+The fall bloom is not labeled 1, which means there was a data gap before or during the bloom.
+The classifier couldn’t predict this bloom.</p>
+</section>
+</section>
+<section id="conclusion">
+<h2>Conclusion<a class="headerlink" href="#conclusion" title="Link to this heading">¶</a></h2>
+<p>It is possible to train a ML model using only the observational data.
+But using only the Ferrybox data is not enough, apart from the horizontal surface profiles of temperature and salinity, we need other data.
+In this project, we used river discharge data from the observation stations near the ferrybox track.</p>
+<p>Before using river discharge as input data, we tried to predict blooms using only horizontal surface profiles of temperature and salinity.
+The test loss and accuracy didn’t improve in this case, but the training loss and accuracy improved over time.
+This means that the neural network could remember the specific patterns of temperature and salinity profiles that correspond to blooms, but couldn’t generalise them.
+This could happen for 2 reasons: not enough data, or/and the temperature and salinity profiles don’t have enough information to predict blooms.</p>
+<p>Adding river discharge to the input data enabled learning.
+We expect that adding other data on precipitation, nutrients from the stations, etc. will improve the accuracy of the predictions.</p>
+<p>Unfortunately, adding new parameters to the observation vector cannot solve the main problem of using only observations for ML model training - not enough data.
+There are usually only 2 blooms per year, in spring and autumn.
+For 20-25 years of Ferrybox data, this means that we only have at most 50 blooms that we want to predict.</p>
+<p>But the Ferrybox data can still be valuable.
+We need to combine modelling and observations in the data-driven model.</p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">Blooms-ML</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="intro.html">Algal blooms prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modeled_data.html">Modeled data</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Ferrybox data</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#input-data">Input data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#labeling">Labeling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#results">Results</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#conclusion">Conclusion</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="modeled_data.html" title="previous chapter">Modeled data</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2024, Shamil Iakubov.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.1.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/ferrybox_data.md.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

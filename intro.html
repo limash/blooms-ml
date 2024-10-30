@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Algal blooms prediction &#8212; Blooms-ML 0.1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=686e5160" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <script src="_static/documentation_options.js?v=2709fde1"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Modeled data" href="modeled_data.html" />
+    <link rel="prev" title="Welcome to Blooms-ML’s documentation!" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="algal-blooms-prediction">
+<h1>Algal blooms prediction<a class="headerlink" href="#algal-blooms-prediction" title="Link to this heading">¶</a></h1>
+<p>Code: <a class="reference external" href="https://github.com/limash/blooms-ml">https://github.com/limash/blooms-ml</a></p>
+<p>The main goal of the project is to evaluate the possibility of predicting algal blooms using machine learning (ML) methods.
+This is interesting in the context of the following task of predicting harmful algal blooms (HABs).
+Predicting algal blooms is difficult because they occur only a few times a year (we are usually interested in predicting when a bloom will start), and it can be a geographically dependent task.
+These factors limit the amount of training data we need in traditional ML methods.</p>
+<p>There are 2 main sources of data that we use during this project:</p>
+<ol class="arabic simple">
+<li><p>The modeled data, which comes from the ROMS+NERSEM hydro-physical-biogeochemical model of the Hardangerfjord system and has weekly averages of plenty of seawater parameters.</p></li>
+<li><p>Oslo - Kiel Color Fantasy cruise ship ferrybox data.</p></li>
+</ol>
+<p>We solve the algae bloom prediction problem as a binary classification task (predicting classes: bloom or no bloom) and apply several other ML methods to study the data.
+The short conclusion of the project is that it is possible to predict algal blooms with conventional ML (decision tree classifiers, deep learning).
+We trained several ML models on modeled and ferrybox data, the detailed description is available following the links:</p>
+<ol class="arabic simple">
+<li><p><a class="reference internal" href="modeled_data.html"><span class="std std-doc">Modeled data</span></a></p></li>
+<li><p><a class="reference internal" href="ferrybox_data.html"><span class="std std-doc">Ferrybox data</span></a></p></li>
+</ol>
+<section id="modeled-data-results">
+<h2>Modeled data results<a class="headerlink" href="#modeled-data-results" title="Link to this heading">¶</a></h2>
+<p>Both the decision tree classifier and the neural network classifier that we trained on the modeled data can predict blooms.
+The accuracy on the balanced dataset (same amount of bloom and no bloom points, for the original dataset with many more no bloom points the accuracy may be better) is about 60-70%.
+We believe that it is possible to improve the prediction accuracy significantly.
+However, in order to continue working on this, it is necessary to test the algorithms on the observational data to be sure that they actually work properly.
+Unfortunately, we haven’t been able to get the observational data in a form similar to the modeled data (temperature and salinity profiles to calculate a density profile, and the corresponding nutrients at the surface).</p>
+<p>During the project, we had difficulty retrieving data from the NIVA resources.
+We weren’t able to retrieve nutrients, temperature and salinity profile observations as a time series.
+First, the data is scattered through different databases and private sources.
+Then, similar variables have different names even within one data source, units of similar variables are also often different, making them uncomparable.
+To make the data usable, it is important to share the data and follow the standards.</p>
+</section>
+<section id="ferrybox-data-results">
+<h2>Ferrybox data results<a class="headerlink" href="#ferrybox-data-results" title="Link to this heading">¶</a></h2>
+<p>It is possible to train a ML model using only the observational data.
+But using only the Ferrybox data is not enough, apart from the horizontal surface profiles of temperature and salinity, we need other data.
+In this project, we used river discharge data from the observation stations near the ferrybox track.</p>
+<p>Before using river discharge as input data, we tried to predict blooms using only horizontal surface profiles of temperature and salinity.
+The test loss and accuracy didn’t improve in this case, but the training loss and accuracy improved over time.
+This means that the neural network could remember the specific patterns of temperature and salinity profiles that correspond to blooms, but couldn’t generalise them.
+This could happen for 2 reasons: not enough data, or/and the temperature and salinity profiles don’t have enough information to predict blooms.</p>
+<p>Adding river discharge to the input data enabled learning.
+We expect that adding other data on precipitation, nutrients from the stations, etc. will improve the accuracy of the predictions.</p>
+<p>Unfortunately, adding new parameters to the observation vector cannot solve the main problem of using only observations for ML model training - not enough data.
+There are usually only 2 blooms per year, in spring and autumn.
+For 20-25 years of Ferrybox data, this means that we only have at most 50 blooms that we want to predict.</p>
+<p>But the Ferrybox data can still be valuable.
+We need to combine modelling and observations in the data-driven model.</p>
+</section>
+<section id="overall-conclusion">
+<h2>Overall conclusion<a class="headerlink" href="#overall-conclusion" title="Link to this heading">¶</a></h2>
+<p>According to the mentioned problems, it may be better to combine the conventional hydro-physical-biogeochemical modeling with the modern machine learning methods.
+We believe that the better approach is to develop a digital twin of a reservoir of interest and then use it for various applications including HABs prediction.
+When we say digital twin, we mean a hydro-physical-biogeochemical model that is powered by ML in several ways:</p>
+<ol class="arabic simple">
+<li><p>Correction of hydro-physical-biogeochemical model results to match observations (data assimilation).</p></li>
+<li><p>Identification of the best parameters of a hydro-physical-biogeochemical model for different applications (e.g. prediction of algal blooms).</p></li>
+</ol>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">Blooms-ML</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Algal blooms prediction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#modeled-data-results">Modeled data results</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ferrybox-data-results">Ferrybox data results</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#overall-conclusion">Overall conclusion</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modeled_data.html">Modeled data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ferrybox_data.html">Ferrybox data</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">Welcome to Blooms-ML’s documentation!</a></li>
+      <li>Next: <a href="modeled_data.html" title="next chapter">Modeled data</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2024, Shamil Iakubov.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.1.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/intro.md.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
